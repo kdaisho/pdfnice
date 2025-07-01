@@ -18,6 +18,7 @@
 	}
 
 	let pdfFile: File | null = null;
+	let pdfUrl: string | null = null;
 
 	async function handleFileChange(event: Event) {
 		if (!(event.target instanceof HTMLInputElement)) return;
@@ -29,6 +30,9 @@
 
 		if (input.files && input.files[0] && container) {
 			pdfFile = input.files[0];
+			// Create a Blob URL for download
+			pdfUrl = URL.createObjectURL(pdfFile);
+			container.innerHTML = '';
 			const fileReader = new FileReader();
 
 			fileReader.onload = async (e) => {
@@ -59,6 +63,9 @@
 <h1>PDF Viewer</h1>
 
 <input type="file" accept="application/pdf" onchange={handleFileChange} />
+{#if pdfUrl}
+	<a href={pdfUrl} download={pdfFile?.name || 'download.pdf'} class="download-btn">Download PDF</a>
+{/if}
 <div id="pdf-container" class="pdf"></div>
 
 <style>
@@ -66,5 +73,19 @@
 		display: grid;
 		gap: 16px;
 		margin-top: 1em;
+	}
+	.download-btn {
+		display: inline-block;
+		margin: 1em 0;
+		padding: 0.5em 1em;
+		background: #0070f3;
+		color: #fff;
+		border-radius: 4px;
+		text-decoration: none;
+		font-weight: bold;
+		transition: background 0.2s;
+	}
+	.download-btn:hover {
+		background: #005bb5;
 	}
 </style>
