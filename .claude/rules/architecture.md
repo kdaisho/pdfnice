@@ -1,5 +1,5 @@
 ---
-description: "Project structure and architectural decisions for PDF Splitter"
+description: 'Project structure and architectural decisions for PDF Splitter'
 ---
 
 # Architecture
@@ -34,12 +34,14 @@ pdf-splitter/
 ## Phase 1: Current Architecture (Viewer Only)
 
 ### Frontend (100% Client-Side)
+
 - **Single-page viewer**: `/src/routes/+page.svelte` (385 lines)
 - **PDF rendering**: PDF.js with canvas + text layer
 - **Search**: Client-side with transform matrix calculations
 - **No database**: Everything in-browser
 
 ### Core Component Flow
+
 ```
 User uploads PDF
   ↓
@@ -62,17 +64,20 @@ Highlight overlays calculated from transform matrices
 ### SvelteKit-Native Model
 
 **Frontend (Client-Side)**:
+
 - PDF merge/split/compress using `pdf-lib` on ArrayBuffer
 - Files **never uploaded** to server (privacy-first)
 - Renders thumbnails for visual page selection
 - Form submissions with `use:enhance` for auth
 
 **Backend (Form Actions + Load Functions)**:
+
 - `+page.server.ts` actions: Passkey registration/login flows (SimpleWebAuthn)
 - Protected routes via `hooks.server.ts` + route groups `(authed)`
 - Session management with httpOnly cookies
 
 **Database (PostgreSQL)**:
+
 - `users`: User accounts
 - `passkeys`: WebAuthn credentials
 - `current_challenge`: Temporary challenge storage (5-min TTL)
@@ -115,6 +120,7 @@ src/
 ## Data Flow (Phase 2)
 
 ### Authentication Flow (Form Actions)
+
 ```
 1. User enters email, submits form
 2. POST /signin?/getOptions → action generates challenge, stores in DB
@@ -127,6 +133,7 @@ src/
 ```
 
 ### Protected Route Access
+
 ```
 1. Request to /dashboard
 2. SvelteKit hooks.server.ts intercepts
@@ -138,6 +145,7 @@ src/
 ```
 
 ### PDF Operation Flow (Client-Side Only)
+
 ```
 User uploads PDF → pdf-lib loads in browser
   ↓
@@ -155,11 +163,13 @@ Browser downloads result
 ## Phase 3: Monetization (Future)
 
 ### Additional Components
+
 - Form action: `checkout` in billing page for session creation
 - `/api/webhooks/+server.ts`: Stripe webhook handler (POST endpoint)
 - Database additions: `stripe_customer_id`, `subscription_status`, `is_pro` in users table
 
 ### Payment Flow
+
 ```
 1. User clicks "Upgrade to Pro"
 2. POST /billing?/checkout → action creates Stripe session
@@ -175,11 +185,13 @@ Browser downloads result
 **Only if users demand cross-device sync**
 
 ### Additional Components
+
 - Object storage (Cloudflare R2 / S3)
 - `pdf_projects` table (user_id, file_key, editing_state_json, updated_at)
 - Auto-deletion after 7 days
 
 ### Privacy Trade-off
+
 - Default: Files stay 100% local (current behavior)
 - Opt-in: "Save to cloud" uploads encrypted PDF for cross-device access
 - Clear UI warning about privacy implications
@@ -219,6 +231,7 @@ export const load = async ({ locals }) => {
 ```
 
 ### Phase 3: Billing Actions
+
 ```typescript
 // src/routes/(authed)/billing/+page.server.ts
 export const actions = {
@@ -281,15 +294,15 @@ CREATE INDEX idx_current_challenge_user_id ON current_challenge(user_id);
 
 ## Technology Justification
 
-| Technology | Why Chosen | Alternatives Considered |
-|------------|-----------|------------------------|
-| SvelteKit | SSR + form actions + load functions, Svelte 5 runes | Next.js (too React-heavy), Remix |
-| Form Actions | Native SvelteKit, progressive enhancement, CSRF built-in | TRPC (extra dependency), REST (verbose) |
-| pdf-lib | Browser-based, no server upload needed | Server-side processing (privacy violation) |
-| SimpleWebAuthn | Passwordless auth, excellent DX | Auth.js (complex), custom JWT (insecure) |
-| Melt UI | Headless for Svelte 5, full style control | shadcn-svelte (opinionated), Tailwind UI (bloat) |
-| PostgreSQL | Relational data, ACID guarantees | Firebase (vendor lock-in), MongoDB (wrong fit) |
-| Stripe | Full control, better margins | Lemon Squeezy (higher fees), Paddle (MoR complications) |
+| Technology     | Why Chosen                                               | Alternatives Considered                                 |
+| -------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| SvelteKit      | SSR + form actions + load functions, Svelte 5 runes      | Next.js (too React-heavy), Remix                        |
+| Form Actions   | Native SvelteKit, progressive enhancement, CSRF built-in | TRPC (extra dependency), REST (verbose)                 |
+| pdf-lib        | Browser-based, no server upload needed                   | Server-side processing (privacy violation)              |
+| SimpleWebAuthn | Passwordless auth, excellent DX                          | Auth.js (complex), custom JWT (insecure)                |
+| Melt UI        | Headless for Svelte 5, full style control                | shadcn-svelte (opinionated), Tailwind UI (bloat)        |
+| PostgreSQL     | Relational data, ACID guarantees                         | Firebase (vendor lock-in), MongoDB (wrong fit)          |
+| Stripe         | Full control, better margins                             | Lemon Squeezy (higher fees), Paddle (MoR complications) |
 
 ## Deployment Strategy
 

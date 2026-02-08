@@ -285,28 +285,29 @@
 	<h2>PDF Viewer</h2>
 
 	<input type="file" accept="application/pdf" onchange={handleFileChange} />
-{#if pdfUrl}
-	<a href={pdfUrl} download={pdfFile?.name || 'download.pdf'} class="download-btn">Download PDF</a>
+	{#if pdfUrl}
+		<a href={pdfUrl} download={pdfFile?.name || 'download.pdf'} class="download-btn">Download PDF</a
+		>
 
-	<div class="search-bar">
-		<input
-			type="text"
-			placeholder="Search in PDF..."
-			bind:value={searchQuery}
-			oninput={performSearch}
-			onkeydown={handleSearchKeydown}
-			class="search-input"
-		/>
-		{#if matchCount > 0}
-			<span class="match-count">{currentMatchIndex + 1} / {matchCount}</span>
-			<button onclick={prevMatch} class="nav-btn" title="Previous (Shift+Enter)">&#9650;</button>
-			<button onclick={nextMatch} class="nav-btn" title="Next (Enter)">&#9660;</button>
-		{:else if searchQuery.trim()}
-			<span class="match-count">No matches</span>
-		{/if}
-	</div>
-{/if}
-<div id="pdf-container" class="pdf"></div>
+		<div class="search-bar">
+			<input
+				type="text"
+				placeholder="Search in PDF..."
+				bind:value={searchQuery}
+				oninput={performSearch}
+				onkeydown={handleSearchKeydown}
+				class="search-input"
+			/>
+			{#if matchCount > 0}
+				<span class="match-count">{currentMatchIndex + 1} / {matchCount}</span>
+				<button onclick={prevMatch} class="nav-btn" title="Previous (Shift+Enter)">&#9650;</button>
+				<button onclick={nextMatch} class="nav-btn" title="Next (Enter)">&#9660;</button>
+			{:else if searchQuery.trim()}
+				<span class="match-count">No matches</span>
+			{/if}
+		</div>
+	{/if}
+	<div id="pdf-container" class="pdf"></div>
 </div>
 
 <style>

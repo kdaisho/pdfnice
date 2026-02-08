@@ -1,4 +1,4 @@
-import { Kysely, Migrator, FileMigrationProvider } from 'kysely';
+import { Migrator, FileMigrationProvider } from 'kysely';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

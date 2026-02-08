@@ -12,8 +12,5 @@
 		"moduleResolution": "bundler",
 		"composite": true
 	},
-	"references": [
-		{ "path": "../shared-types" },
-		{ "path": "../database" }
-	]
+	"references": [{ "path": "../shared-types" }, { "path": "../database" }]
 }

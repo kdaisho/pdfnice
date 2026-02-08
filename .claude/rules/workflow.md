@@ -1,5 +1,5 @@
 ---
-description: "Development workflow, environment setup, and deployment for PDF Splitter"
+description: 'Development workflow, environment setup, and deployment for PDF Splitter'
 ---
 
 # Development Workflow
@@ -83,7 +83,7 @@ R2_BUCKET_NAME=pdfnice-projects
 
 - [ ] **Stripe setup**:
   - [ ] Create product + pricing in Stripe dashboard
-  - [ ] Switch to live API keys (pk_live_..., sk_live_...)
+  - [ ] Switch to live API keys (pk*live*..., sk*live*...)
   - [ ] Configure webhook URL: `https://pdfnice.com/api/webhooks`
   - [ ] Enable Stripe Tax if selling globally
   - [ ] Test webhook delivery in Stripe dashboard
@@ -99,6 +99,7 @@ R2_BUCKET_NAME=pdfnice-projects
 ## Resources
 
 ### Documentation
+
 - [SvelteKit Docs](https://kit.svelte.dev/docs) - Framework reference
 - [SvelteKit Form Actions](https://kit.svelte.dev/docs/form-actions) - Server-side form handling
 - [Melt UI](https://melt-ui.com/) - Headless UI library for Svelte 5
@@ -109,5 +110,6 @@ R2_BUCKET_NAME=pdfnice-projects
 - [Zod](https://zod.dev/) - TypeScript-first schema validation
 
 ### Phase 3 Resources (Future)
+
 - [Stripe Webhooks](https://stripe.com/docs/webhooks)
 - [Stripe Tax](https://stripe.com/tax)

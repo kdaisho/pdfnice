@@ -26,6 +26,7 @@ examples/
 These examples are **referenced** in `.claude/rules/` files, not copy-pasted. When implementing a feature, review the relevant example for patterns, then adapt to your specific needs.
 
 **Example**: When implementing Phase 2 auth, see:
+
 - `form-actions/auth-actions.ts` for form action structure
 - `form-actions/hooks-server.ts` for session middleware
 - `webauthn/client-usage.svelte` for client-side flow
@@ -33,6 +34,7 @@ These examples are **referenced** in `.claude/rules/` files, not copy-pasted. Wh
 ## Not Production Code
 
 These examples contain:
+
 - ✅ Correct patterns and structure
 - ✅ Proper error handling
 - ✅ Security best practices

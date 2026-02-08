@@ -12,11 +12,7 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
 }
 
 export async function findUserById(id: string): Promise<User | undefined> {
-	const result = await db
-		.selectFrom('users')
-		.selectAll()
-		.where('id', '=', id)
-		.executeTakeFirst();
+	const result = await db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();
 
 	return result as User | undefined;
 }

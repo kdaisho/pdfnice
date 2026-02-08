@@ -1,76 +1,75 @@
 <script lang="ts">
-	import { trpc } from '$lib/trpc';
+	import { enhance } from '$app/forms';
 	import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
-	import { goto } from '$app/navigation';
+	import type { ActionData } from './$types';
+
+	let { form }: { form: ActionData } = $props();
 
 	let email = $state('');
 	let isLoading = $state(false);
 	let errorMessage = $state('');
 	let mode = $state<'register' | 'login'>('register');
 
-	async function handleRegister() {
-		if (!email) {
-			errorMessage = 'Please enter an email address';
-			return;
-		}
-
-		isLoading = true;
-		errorMessage = '';
+	// Handle WebAuthn flow after receiving options from server
+	async function handleWebAuthn() {
+		if (!form?.options) return;
 
 		try {
-			// Get registration options
-			const options = await trpc().auth.getRegistrationOptions.mutate({ email });
+			isLoading = true;
+			errorMessage = '';
 
-			// Start WebAuthn registration
-			const registrationResponse = await startRegistration(options);
+			let response;
+			if (form.mode === 'register') {
+				response = await startRegistration({ optionsJSON: form.options });
+			} else {
+				response = await startAuthentication({ optionsJSON: form.options });
+			}
 
-			// Verify registration
-			await trpc().auth.verifyRegistration.mutate({
-				email,
-				registrationResponse: JSON.stringify(registrationResponse)
-			});
+			// Submit the verification form
+			const verifyForm = document.getElementById(
+				form.mode === 'register' ? 'verify-registration-form' : 'verify-login-form'
+			) as HTMLFormElement;
+			const responseInput = verifyForm.querySelector('input[name="response"]') as HTMLInputElement;
+			const emailInput = verifyForm.querySelector('input[name="email"]') as HTMLInputElement;
 
-			// Redirect to dashboard
-			goto('/dashboard');
-		} catch (error: any) {
-			console.error('Registration error:', error);
-			errorMessage = error.message || 'Registration failed. Please try again.';
-		} finally {
+			responseInput.value = JSON.stringify(response);
+			emailInput.value = form.email!;
+			verifyForm.requestSubmit();
+		} catch (error: unknown) {
 			isLoading = false;
+			if (error instanceof Error) {
+				if (error.name === 'InvalidStateError') {
+					errorMessage = 'This authenticator is already registered. Try logging in instead.';
+				} else if (error.name === 'NotAllowedError') {
+					errorMessage = 'Authentication was cancelled or timed out.';
+				} else {
+					errorMessage = error.message;
+				}
+			}
 		}
 	}
 
-	async function handleLogin() {
-		if (!email) {
-			errorMessage = 'Please enter an email address';
-			return;
+	// Watch for options from server to trigger WebAuthn
+	$effect(() => {
+		if (form?.options) {
+			handleWebAuthn();
 		}
+	});
 
-		isLoading = true;
-		errorMessage = '';
-
-		try {
-			// Get login options
-			const options = await trpc().auth.getLoginOptions.mutate({ email });
-
-			// Start WebAuthn authentication
-			const authenticationResponse = await startAuthentication(options);
-
-			// Verify authentication
-			await trpc().auth.verifyLogin.mutate({
-				email,
-				authenticationResponse: JSON.stringify(authenticationResponse)
-			});
-
-			// Redirect to dashboard
-			goto('/dashboard');
-		} catch (error: any) {
-			console.error('Login error:', error);
-			errorMessage = error.message || 'Login failed. Please try again.';
-		} finally {
+	// Display server errors
+	$effect(() => {
+		if (form?.error) {
+			errorMessage = form.error;
 			isLoading = false;
 		}
-	}
+	});
+
+	// Sync mode from server response
+	$effect(() => {
+		if (form?.mode) {
+			mode = form.mode;
+		}
+	});
 </script>
 
 <div class="auth-container">
@@ -83,6 +82,7 @@
 				mode = 'register';
 				errorMessage = '';
 			}}
+			disabled={isLoading}
 		>
 			Register
 		</button>
@@ -92,44 +92,101 @@
 				mode = 'login';
 				errorMessage = '';
 			}}
+			disabled={isLoading}
 		>
 			Login
 		</button>
 	</div>
 
-	<form
-		onsubmit={(e) => {
-			e.preventDefault();
-			if (mode === 'register') {
-				handleRegister();
-			} else {
-				handleLogin();
-			}
-		}}
-	>
-		<div class="form-group">
-			<label for="email">Email</label>
-			<input
-				type="email"
-				id="email"
-				bind:value={email}
-				placeholder="your@email.com"
-				required
-				disabled={isLoading}
-			/>
-		</div>
+	<!-- Registration form -->
+	{#if mode === 'register'}
+		<form
+			method="POST"
+			action="?/getRegistrationOptions"
+			use:enhance={() => {
+				isLoading = true;
+				errorMessage = '';
+				return async ({ update }) => {
+					await update();
+					// WebAuthn triggered by $effect when form.options is set
+				};
+			}}
+		>
+			<div class="form-group">
+				<label for="email">Email</label>
+				<input
+					type="email"
+					id="email"
+					name="email"
+					bind:value={email}
+					placeholder="your@email.com"
+					required
+					disabled={isLoading}
+				/>
+			</div>
 
-		{#if errorMessage}
-			<div class="error">{errorMessage}</div>
-		{/if}
-
-		<button type="submit" disabled={isLoading}>
-			{#if isLoading}
-				{mode === 'register' ? 'Registering...' : 'Logging in...'}
-			{:else}
-				{mode === 'register' ? 'Register Passkey' : 'Login with Passkey'}
+			{#if errorMessage}
+				<div class="error">{errorMessage}</div>
 			{/if}
-		</button>
+
+			<button type="submit" disabled={isLoading}>
+				{isLoading ? 'Registering...' : 'Register Passkey'}
+			</button>
+		</form>
+	{/if}
+
+	<!-- Login form -->
+	{#if mode === 'login'}
+		<form
+			method="POST"
+			action="?/getLoginOptions"
+			use:enhance={() => {
+				isLoading = true;
+				errorMessage = '';
+				return async ({ update }) => {
+					await update();
+					// WebAuthn triggered by $effect when form.options is set
+				};
+			}}
+		>
+			<div class="form-group">
+				<label for="email-login">Email</label>
+				<input
+					type="email"
+					id="email-login"
+					name="email"
+					bind:value={email}
+					placeholder="your@email.com"
+					required
+					disabled={isLoading}
+				/>
+			</div>
+
+			{#if errorMessage}
+				<div class="error">{errorMessage}</div>
+			{/if}
+
+			<button type="submit" disabled={isLoading}>
+				{isLoading ? 'Logging in...' : 'Login with Passkey'}
+			</button>
+		</form>
+	{/if}
+
+	<!-- Hidden verification forms (submitted programmatically after WebAuthn) -->
+	<form
+		id="verify-registration-form"
+		method="POST"
+		action="?/verifyRegistration"
+		use:enhance
+		hidden
+	>
+		<input type="hidden" name="email" value="" />
+		<input type="hidden" name="response" value="" />
+	</form>
+
+	<form id="verify-login-form" method="POST" action="?/verifyLogin" use:enhance hidden>
+		<input type="hidden" name="email" value="" />
+		<input type="hidden" name="response" value="" />
 	</form>
 
 	<div class="info">
@@ -170,6 +227,11 @@
 		cursor: pointer;
 		border-radius: 4px;
 		transition: all 0.2s;
+	}
+
+	.mode-toggle button:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 
 	.mode-toggle button.active {

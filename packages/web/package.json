@@ -16,8 +16,7 @@
 		"@pdf-splitter/shared-types": "workspace:*",
 		"@simplewebauthn/browser": "^11.0.0",
 		"@simplewebauthn/server": "^11.0.0",
-		"@trpc/client": "^11.0.0",
-		"@trpc/server": "^11.0.0",
+		"@simplewebauthn/types": "^11.0.0",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^5.3.31",
 		"zod": "^3.22.0"

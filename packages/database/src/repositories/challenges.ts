@@ -39,8 +39,5 @@ export async function deleteChallenge(userId: string): Promise<void> {
 }
 
 export async function cleanupExpiredChallenges(): Promise<void> {
-	await db
-		.deleteFrom('current_challenge')
-		.where('expires_at', '<', new Date())
-		.execute();
+	await db.deleteFrom('current_challenge').where('expires_at', '<', new Date()).execute();
 }

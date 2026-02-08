@@ -1,30 +1,29 @@
 <script lang="ts">
-	import { trpc } from '$lib/trpc';
-	import { goto } from '$app/navigation';
+	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	let isLoggingOut = $state(false);
-
-	async function handleLogout() {
-		isLoggingOut = true;
-		try {
-			await trpc().auth.logout.mutate();
-			goto('/');
-		} catch (error) {
-			console.error('Logout error:', error);
-			isLoggingOut = false;
-		}
-	}
 </script>
 
 <div class="dashboard">
 	<header>
 		<h1>Dashboard</h1>
-		<button onclick={handleLogout} disabled={isLoggingOut}>
-			{isLoggingOut ? 'Logging out...' : 'Logout'}
-		</button>
+		<form
+			method="POST"
+			action="?/logout"
+			use:enhance={() => {
+				isLoggingOut = true;
+				return async ({ update }) => {
+					await update();
+				};
+			}}
+		>
+			<button type="submit" disabled={isLoggingOut}>
+				{isLoggingOut ? 'Logging out...' : 'Logout'}
+			</button>
+		</form>
 	</header>
 
 	<div class="content">
@@ -76,7 +75,11 @@
 		color: #333;
 	}
 
-	header button {
+	header form {
+		margin: 0;
+	}
+
+	header form button {
 		padding: 0.5rem 1rem;
 		background: #dc3545;
 		color: white;
@@ -87,11 +90,11 @@
 		transition: background 0.2s;
 	}
 
-	header button:hover:not(:disabled) {
+	header form button:hover:not(:disabled) {
 		background: #c82333;
 	}
 
-	header button:disabled {
+	header form button:disabled {
 		background: #ccc;
 		cursor: not-allowed;
 	}

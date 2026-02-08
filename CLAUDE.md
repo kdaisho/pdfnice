@@ -9,6 +9,7 @@
 **Freemium Model**: Free viewer/search, paid features (merge/split/compress) with anti-abuse auth.
 
 **Phased Development**:
+
 - **Phase 1** ✅: Basic PDF viewer with search
 - **Phase 2** (Current): Auth foundation (SimpleWebAuthn + Form Actions)
 - **Phase 3** (Future): Stripe monetization
@@ -32,25 +33,26 @@ pnpm test             # Run Vitest tests
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| Framework | SvelteKit 2.x + Svelte 5 | SSR + API routes + Form actions |
-| API Layer | Form Actions | Built-in, progressive enhancement, CSRF protection |
-| PDF Processing | pdf-lib (browser) | Privacy-first, no server upload |
-| PDF Rendering | PDF.js | Canvas + text layer for search |
-| UI Components | Melt UI | Headless, accessible for Svelte 5 |
-| Styling | Custom CSS | Full control, no utility bloat |
-| Auth | SimpleWebAuthn | Passwordless passkeys |
-| Database | PostgreSQL | Relational data (Supabase/Neon) |
-| Payment (Phase 3) | Stripe | Better margins, full control |
-| Drag-Drop (Phase 2) | dnd-kit-svelte | Page reordering |
-| Hosting | Vercel/Cloudflare | Edge deployment |
+| Layer               | Technology               | Why                                                |
+| ------------------- | ------------------------ | -------------------------------------------------- |
+| Framework           | SvelteKit 2.x + Svelte 5 | SSR + API routes + Form actions                    |
+| API Layer           | Form Actions             | Built-in, progressive enhancement, CSRF protection |
+| PDF Processing      | pdf-lib (browser)        | Privacy-first, no server upload                    |
+| PDF Rendering       | PDF.js                   | Canvas + text layer for search                     |
+| UI Components       | Melt UI                  | Headless, accessible for Svelte 5                  |
+| Styling             | Custom CSS               | Full control, no utility bloat                     |
+| Auth                | SimpleWebAuthn           | Passwordless passkeys                              |
+| Database            | PostgreSQL               | Relational data (Supabase/Neon)                    |
+| Payment (Phase 3)   | Stripe                   | Better margins, full control                       |
+| Drag-Drop (Phase 2) | dnd-kit-svelte           | Page reordering                                    |
+| Hosting             | Vercel/Cloudflare        | Edge deployment                                    |
 
 ---
 
 ## Current Status
 
 ### Phase 1: Completed ✅
+
 - PDF viewer with canvas rendering (1.5x scale)
 - Text layer overlay for selection
 - Full-text search with highlight navigation
@@ -59,7 +61,9 @@ pnpm test             # Run Vitest tests
 - 100% client-side (no backend)
 
 ### Phase 2: In Progress 🚧
+
 **Auth Foundation** - Enable user accounts to prevent abuse:
+
 - Database setup (users, passkeys, sessions, current_challenge)
 - SimpleWebAuthn passkey authentication (Touch ID/Face ID)
 - Form actions for auth flows (+page.server.ts)
@@ -68,13 +72,17 @@ pnpm test             # Run Vitest tests
 - PDF operations UI (merge/split using pdf-lib in browser)
 
 ### Phase 3: Planned 📋
+
 **Monetization** - Add paid tier when ready:
+
 - Stripe integration (checkout, webhooks, customer portal)
 - Feature gating (free vs. pro)
 - Pro features: Unlimited operations, >50MB files, priority support
 
 ### Phase 4: Optional ⏳
+
 **Cloud Sync** - Only if users demand cross-device sync:
+
 - Object storage (Cloudflare R2)
 - Opt-in PDF project persistence
 - Privacy trade-off clearly communicated
@@ -126,14 +134,18 @@ pdf-splitter/
 This file is the **high-level guide**. For detailed instructions:
 
 ### **UI/UX Implementation**
+
 → `.claude/rules/ui-patterns.md`
+
 - Styling philosophy (custom CSS, Melt UI)
 - PDF viewer implementation (canvas, text layer, search)
 - Component patterns and organization
 - Performance constraints (code splitting)
 
 ### **Business Logic & Data**
+
 → `.claude/rules/logic-and-data.md`
+
 - Form actions setup and usage
 - SimpleWebAuthn integration (passkey auth)
 - Database access layer (DAO pattern)
@@ -142,20 +154,26 @@ This file is the **high-level guide**. For detailed instructions:
 - PDF operations (merge/split/compress)
 
 ### **Testing & Security**
+
 → `.claude/rules/testing-and-qa.md`
+
 - Code quality standards (TypeScript, Prettier, ESLint)
 - Security requirements (WebAuthn, Stripe, sessions)
 - Testing strategy per phase
 
 ### **Development Workflow**
+
 → `.claude/rules/workflow.md`
+
 - Environment variables (by phase)
 - Deployment checklists
 - Resources and documentation links
 - Reference implementations
 
 ### **Architecture Details**
+
 → `.claude/rules/architecture.md`
+
 - File structure evolution
 - Data flow diagrams
 - Database schema (SQL)
@@ -163,7 +181,9 @@ This file is the **high-level guide**. For detailed instructions:
 - Deployment strategy
 
 ### **Code Examples**
+
 → `examples/` directory
+
 - Form actions patterns (auth flows)
 - WebAuthn client/server examples
 - PDF operations (pdf-lib)
@@ -194,6 +214,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Implementation Roadmap
 
 ### Phase 2: Auth Foundation (Next)
+
 - [x] Plan auth architecture
 - [ ] Database schema + migrations (users, passkeys, sessions, current_challenge)
 - [ ] Form actions for auth (+page.server.ts with actions)
@@ -204,6 +225,7 @@ This file is the **high-level guide**. For detailed instructions:
 - [ ] PDF operations UI (merge/split with pdf-lib)
 
 ### Phase 3: Monetization (Future)
+
 - [ ] Stripe setup (product, prices, test mode)
 - [ ] Checkout form action (createCheckoutSession, createPortalSession)
 - [ ] Webhook endpoint (/api/webhooks with signature verification)
@@ -212,6 +234,7 @@ This file is the **high-level guide**. For detailed instructions:
 - [ ] Stripe Tax configuration
 
 ### Phase 4: Cloud Sync (Optional)
+
 - [ ] User research: Do users want cross-device sync?
 - [ ] Object storage setup (Cloudflare R2)
 - [ ] pdf_projects table (file_key, editing_state_json)
@@ -223,6 +246,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Business Rules
 
 ### Free Tier (Phase 2)
+
 - View PDFs
 - Search PDFs
 - Download PDFs
@@ -230,7 +254,9 @@ This file is the **high-level guide**. For detailed instructions:
 - Requires account to prevent abuse
 
 ### Pro Tier (Phase 3)
+
 **$9/month**:
+
 - Unlimited operations per day
 - Files >50MB
 - Batch operations (merge 10+ PDFs)
@@ -238,6 +264,7 @@ This file is the **high-level guide**. For detailed instructions:
 - Early access to new features
 
 ### Rate Limiting Strategy
+
 - Track `usage_count_today` in users table
 - Reset daily (check `last_reset_date`)
 - Display remaining operations in UI
@@ -248,6 +275,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Security Checklist
 
 ### WebAuthn
+
 - ✅ RP_ID matches domain (no protocol)
 - ✅ Origin includes protocol
 - ✅ Challenge TTL: 5 minutes max
@@ -257,6 +285,7 @@ This file is the **high-level guide**. For detailed instructions:
 - ✅ HTTPS required (localhost exception for dev)
 
 ### Sessions
+
 - ✅ httpOnly: true
 - ✅ secure: true
 - ✅ sameSite: 'strict'
@@ -264,6 +293,7 @@ This file is the **high-level guide**. For detailed instructions:
 - ✅ Validated on each request via hooks
 
 ### Stripe (Phase 3)
+
 - ✅ Never expose secret key to client
 - ✅ Webhook signature verification (CRITICAL)
 - ✅ Test mode before production
@@ -274,6 +304,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Reference Implementation
 
 **Key Learnings** (from prior projects):
+
 - SimpleWebAuthn challenge-response pattern
 - Challenge management (separate table, TTL validation)
 - Security hardening (rate limiting, counter validation, userHandle check)
@@ -284,6 +315,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Resources
 
 **Core Documentation**:
+
 - [SvelteKit](https://kit.svelte.dev/docs) - Form actions, load functions, hooks
 - [SvelteKit Form Actions](https://kit.svelte.dev/docs/form-actions)
 - [SimpleWebAuthn](https://simplewebauthn.dev/)
@@ -293,6 +325,7 @@ This file is the **high-level guide**. For detailed instructions:
 - [Zod](https://zod.dev/)
 
 **Phase 3 Resources** (when ready):
+
 - [Stripe Webhooks](https://stripe.com/docs/webhooks)
 - [Stripe Tax](https://stripe.com/tax)
 
@@ -301,6 +334,7 @@ This file is the **high-level guide**. For detailed instructions:
 ## Common Tasks
 
 ### Add a new form action
+
 1. Create `+page.server.ts` in the route directory
 2. Export `actions` object with named actions
 3. Validate input with Zod
@@ -308,17 +342,20 @@ This file is the **high-level guide**. For detailed instructions:
 5. Access in Svelte via `form` prop from `use:enhance`
 
 ### Add a new protected route
+
 1. Create in `src/routes/(authed)/`
 2. Session validated via `hooks.server.ts` automatically
 3. Access user via `event.locals.user` in +page.server.ts
 
 ### Perform PDF operation
+
 1. Import function from `examples/pdf-operations.ts`
 2. Call with File objects from input
 3. Download resulting Blob
 4. **Never upload to server**
 
 ### Debug WebAuthn issues
+
 1. Check browser console for errors
 2. Verify RP_ID matches domain
 3. Ensure HTTPS (or localhost for dev)
