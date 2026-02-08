@@ -1,12 +1,6 @@
 {
-	"files": [],
-	"references": [
-		{ "path": "./packages/shared-types" },
-		{ "path": "./packages/database" },
-		{ "path": "./packages/web" }
-	],
+	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
-		"composite": true,
 		"allowJs": true,
 		"checkJs": true,
 		"esModuleInterop": true,
@@ -15,6 +9,11 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
-	}
+		"moduleResolution": "bundler",
+		"composite": true
+	},
+	"references": [
+		{ "path": "../shared-types" },
+		{ "path": "../database" }
+	]
 }

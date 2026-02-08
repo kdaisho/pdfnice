@@ -2,6 +2,9 @@
 	import 'pdfjs-dist/web/pdf_viewer.css';
 	import type { getDocument, TextItem } from 'pdfjs-dist/types/src/display/api';
 	import type { GlobalWorkerOptions, TextLayer } from 'pdfjs-dist';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	let pdfjs: {
 		getDocument: typeof getDocument;
@@ -267,9 +270,21 @@
 	}
 </script>
 
-<h1>PDF Viewer</h1>
+<header class="nav-header">
+	<h1>PDF Splitter</h1>
+	<nav>
+		{#if data.user}
+			<a href="/dashboard">Dashboard</a>
+		{:else}
+			<a href="/setup">Login / Sign Up</a>
+		{/if}
+	</nav>
+</header>
 
-<input type="file" accept="application/pdf" onchange={handleFileChange} />
+<div class="content">
+	<h2>PDF Viewer</h2>
+
+	<input type="file" accept="application/pdf" onchange={handleFileChange} />
 {#if pdfUrl}
 	<a href={pdfUrl} download={pdfFile?.name || 'download.pdf'} class="download-btn">Download PDF</a>
 
@@ -292,8 +307,48 @@
 	</div>
 {/if}
 <div id="pdf-container" class="pdf"></div>
+</div>
 
 <style>
+	.nav-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem 2rem;
+		background: white;
+		border-bottom: 1px solid #eee;
+		margin-bottom: 2rem;
+	}
+
+	.nav-header h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		color: #333;
+	}
+
+	.nav-header nav a {
+		color: #007bff;
+		text-decoration: none;
+		font-weight: 500;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		transition: background 0.2s;
+	}
+
+	.nav-header nav a:hover {
+		background: #f0f0f0;
+	}
+
+	.content {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0 2rem;
+	}
+
+	.content h2 {
+		margin-top: 0;
+	}
+
 	.pdf {
 		display: grid;
 		gap: 16px;
