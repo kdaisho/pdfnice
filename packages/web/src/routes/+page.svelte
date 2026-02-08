@@ -22,8 +22,8 @@
 		return pdfjs;
 	}
 
-	let pdfFile: File | null = null;
-	let pdfUrl: string | null = null;
+	let pdfFile = $state<File | null>(null);
+	let pdfUrl = $state<string | null>(null);
 
 	// Store page data for search
 	interface PageTextData {
@@ -39,10 +39,13 @@
 	let pagesData: PageTextData[] = [];
 
 	// Search state
-	let searchQuery = '';
-	let matchCount = 0;
-	let currentMatchIndex = 0;
+	let searchQuery = $state<string>('');
+	let matchCount = $state<number>(0);
+	let currentMatchIndex = $state<number>(0);
 	let highlightElements: HTMLElement[] = [];
+	let searchInputEl = $state<HTMLInputElement | null>(null);
+	let matchCase = $state<boolean>(false);
+	let matchWholeWord = $state<boolean>(false);
 
 	function performSearch() {
 		// Clear previous highlights
@@ -53,7 +56,7 @@
 
 		if (!searchQuery.trim() || pagesData.length === 0) return;
 
-		const query = searchQuery.toLowerCase();
+		const query = matchCase ? searchQuery : searchQuery.toLowerCase();
 
 		// Search through each page's text data
 		pagesData.forEach((pageData) => {
@@ -73,12 +76,28 @@
 			});
 
 			// Find matches
-			const lowerCombined = combinedText.toLowerCase();
+			const textToSearch = matchCase ? combinedText : combinedText.toLowerCase();
 			let searchPos = 0;
 
 			while (true) {
-				const matchIndex = lowerCombined.indexOf(query, searchPos);
+				const matchIndex = textToSearch.indexOf(query, searchPos);
 				if (matchIndex === -1) break;
+
+				// Check whole word boundary if enabled
+				if (matchWholeWord) {
+					const charBefore = matchIndex > 0 ? textToSearch[matchIndex - 1] : ' ';
+					const charAfter =
+						matchIndex + query.length < textToSearch.length
+							? textToSearch[matchIndex + query.length]
+							: ' ';
+					const isWordBoundaryBefore = !/\w/.test(charBefore);
+					const isWordBoundaryAfter = !/\w/.test(charAfter);
+
+					if (!isWordBoundaryBefore || !isWordBoundaryAfter) {
+						searchPos = matchIndex + 1;
+						continue;
+					}
+				}
 
 				const matchEnd = matchIndex + query.length;
 				matchCount++;
@@ -172,17 +191,65 @@
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			if (event.shiftKey) {
-				prevMatch();
-			} else {
-				nextMatch();
-			}
-		} else if (event.key === 'Escape') {
+		if (event.key === 'Escape') {
 			searchQuery = '';
 			performSearch();
 		}
 	}
+
+	function toggleMatchCase() {
+		matchCase = !matchCase;
+		performSearch();
+	}
+
+	function toggleMatchWholeWord() {
+		matchWholeWord = !matchWholeWord;
+		performSearch();
+	}
+
+	$effect(() => {
+		const hasPdf = Boolean(pdfUrl);
+		function onKeydown(e: KeyboardEvent) {
+			// Cmd+f: Focus search
+			if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+				if (hasPdf) {
+					e.preventDefault();
+					searchInputEl?.focus();
+					performSearch();
+				}
+			}
+			// Cmd+g: Next match
+			if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey && !e.altKey) {
+				if (hasPdf && matchCount > 0) {
+					e.preventDefault();
+					nextMatch();
+				}
+			}
+			// Cmd+Shift+g: Previous match
+			if ((e.metaKey || e.ctrlKey) && e.key === 'g' && e.shiftKey && !e.altKey) {
+				if (hasPdf && matchCount > 0) {
+					e.preventDefault();
+					prevMatch();
+				}
+			}
+			// Cmd+Opt+c: Toggle match case
+			if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyC') {
+				if (hasPdf) {
+					e.preventDefault();
+					toggleMatchCase();
+				}
+			}
+			// Cmd+Opt+w: Toggle match whole word
+			if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyW') {
+				if (hasPdf) {
+					e.preventDefault();
+					toggleMatchWholeWord();
+				}
+			}
+		}
+		document.addEventListener('keydown', onKeydown, true);
+		return () => document.removeEventListener('keydown', onKeydown, true);
+	});
 
 	async function handleFileChange(event: Event) {
 		if (!(event.target instanceof HTMLInputElement)) return;
@@ -282,30 +349,49 @@
 </header>
 
 <div class="content">
+	{#if pdfUrl}
+		<div class="search-bar">
+			<input
+				type="text"
+				placeholder="Search in PDF..."
+				bind:value={searchQuery}
+				bind:this={searchInputEl}
+				oninput={performSearch}
+				onkeydown={handleSearchKeydown}
+				class="search-input"
+			/>
+			<button
+				onclick={toggleMatchCase}
+				class="toggle-btn"
+				class:active={matchCase}
+				title="Match Case (Cmd+Opt+C)"
+			>
+				Aa
+			</button>
+			<button
+				onclick={toggleMatchWholeWord}
+				class="toggle-btn"
+				class:active={matchWholeWord}
+				title="Match Whole Word (Cmd+Opt+W)"
+			>
+				<span class="whole-word-icon">[ab]</span>
+			</button>
+			{#if matchCount > 0}
+				<span class="match-count">{currentMatchIndex + 1} / {matchCount}</span>
+				<button onclick={prevMatch} class="nav-btn" title="Previous (Cmd+Shift+G)">&#9650;</button>
+				<button onclick={nextMatch} class="nav-btn" title="Next (Cmd+G)">&#9660;</button>
+			{:else if searchQuery.trim()}
+				<span class="match-count">No matches</span>
+			{/if}
+		</div>
+	{/if}
+
 	<h2>PDF Viewer</h2>
 
 	<input type="file" accept="application/pdf" onchange={handleFileChange} />
 	{#if pdfUrl}
 		<a href={pdfUrl} download={pdfFile?.name || 'download.pdf'} class="download-btn">Download PDF</a
 		>
-
-		<div class="search-bar">
-			<input
-				type="text"
-				placeholder="Search in PDF..."
-				bind:value={searchQuery}
-				oninput={performSearch}
-				onkeydown={handleSearchKeydown}
-				class="search-input"
-			/>
-			{#if matchCount > 0}
-				<span class="match-count">{currentMatchIndex + 1} / {matchCount}</span>
-				<button onclick={prevMatch} class="nav-btn" title="Previous (Shift+Enter)">&#9650;</button>
-				<button onclick={nextMatch} class="nav-btn" title="Next (Enter)">&#9660;</button>
-			{:else if searchQuery.trim()}
-				<span class="match-count">No matches</span>
-			{/if}
-		</div>
 	{/if}
 	<div id="pdf-container" class="pdf"></div>
 </div>
@@ -424,6 +510,42 @@
 
 	.nav-btn:hover {
 		background: #e9e9e9;
+	}
+
+	.toggle-btn {
+		padding: 4px 8px;
+		background: #fff;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1;
+		color: #666;
+		transition:
+			background 0.15s,
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	.toggle-btn:hover {
+		background: #e9e9e9;
+	}
+
+	.toggle-btn.active {
+		background: #0070f3;
+		border-color: #0070f3;
+		color: #fff;
+	}
+
+	.toggle-btn.active:hover {
+		background: #005bb5;
+		border-color: #005bb5;
+	}
+
+	.whole-word-icon {
+		font-family: monospace;
+		font-size: 11px;
 	}
 
 	/* Search highlight overlay styles */
