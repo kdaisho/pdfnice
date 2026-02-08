@@ -22,7 +22,7 @@ pdf-splitter/
 │       ├── ui-patterns.md
 │       └── workflow.md
 ├── examples/                         # Code examples (extracted from docs)
-│   ├── trpc-setup/
+│   ├── form-actions/
 │   ├── webauthn/
 │   └── melt-ui-dialog.svelte
 ├── package.json
@@ -59,17 +59,17 @@ Highlight overlays calculated from transform matrices
 
 ## Phase 2: Planned Architecture (Auth Foundation)
 
-### Edge-First Hybrid Model
+### SvelteKit-Native Model
 
 **Frontend (Client-Side)**:
 - PDF merge/split/compress using `pdf-lib` on ArrayBuffer
 - Files **never uploaded** to server (privacy-first)
 - Renders thumbnails for visual page selection
-- TRPC client for auth API calls
+- Form submissions with `use:enhance` for auth
 
-**Backend (TRPC Routers)**:
-- `authRouter`: Passkey registration/login flows (SimpleWebAuthn)
-- Protected routes via TRPC middleware
+**Backend (Form Actions + Load Functions)**:
+- `+page.server.ts` actions: Passkey registration/login flows (SimpleWebAuthn)
+- Protected routes via `hooks.server.ts` + route groups `(authed)`
 - Session management with httpOnly cookies
 
 **Database (PostgreSQL)**:
@@ -84,39 +84,46 @@ Highlight overlays calculated from transform matrices
 src/
 ├── routes/
 │   ├── +page.svelte                          # Public PDF viewer
-│   ├── (authed)/                             # Protected routes
-│   │   ├── dashboard/+page.svelte
-│   │   └── setup/+page.svelte                # Passkey registration
-│   ├── signin/+page.svelte
+│   ├── +layout.server.ts                     # Global load (user data)
+│   ├── (authed)/                             # Protected route group
+│   │   ├── +layout.server.ts                 # Auth guard (redirect if no session)
+│   │   ├── dashboard/
+│   │   │   ├── +page.svelte
+│   │   │   └── +page.server.ts               # Load user data
+│   │   └── setup/
+│   │       ├── +page.svelte                  # Passkey registration UI
+│   │       └── +page.server.ts               # Registration actions
+│   ├── signin/
+│   │   ├── +page.svelte                      # Login UI
+│   │   └── +page.server.ts                   # Login actions
 │   └── api/
-│       └── trpc/[...trpc]/+server.ts         # TRPC endpoint
+│       └── webhooks/+server.ts               # Stripe webhooks (Phase 3)
 ├── lib/
 │   ├── server/
-│   │   ├── trpc.ts                           # TRPC instance + context
 │   │   ├── db/                               # Database access layer
 │   │   │   ├── client.ts                     # DB connection
 │   │   │   ├── schema.ts                     # Type-safe schema
-│   │   │   └── migrations/                   # SQL migrations
-│   │   └── routers/
-│   │       ├── _app.ts                       # Root router
-│   │       └── auth.ts                       # Auth procedures
-│   ├── trpc.ts                               # TRPC client (frontend)
+│   │   │   └── dao/                          # Data access objects
+│   │   │       └── auth.ts
+│   │   ├── auth.ts                           # WebAuthn helper functions
+│   │   └── session.ts                        # Session create/validate helpers
 │   ├── components/
 │   └── stores/
-└── hooks.server.ts                           # Session validation
+└── hooks.server.ts                           # Session validation middleware
 ```
 
 ## Data Flow (Phase 2)
 
-### Authentication Flow
+### Authentication Flow (Form Actions)
 ```
-1. User enters email → TRPC: auth.getRegistrationOptions
-2. Server generates challenge, stores in current_challenge table
-3. Client triggers WebAuthn (Touch ID/Face ID)
-4. Client sends response → TRPC: auth.verifyRegistration
-5. Server verifies, saves passkey, creates session
-6. Server sets httpOnly session cookie
-7. User redirected to dashboard
+1. User enters email, submits form
+2. POST /signin?/getOptions → action generates challenge, stores in DB
+3. Action returns challenge options via ActionData
+4. Client JS calls startAuthentication() with options
+5. User authenticates (Touch ID/Face ID)
+6. Client submits response via second form POST
+7. POST /signin?/verify → action verifies, creates session cookie
+8. Action returns redirect(303, '/dashboard')
 ```
 
 ### Protected Route Access
@@ -125,8 +132,9 @@ src/
 2. SvelteKit hooks.server.ts intercepts
 3. Validate session cookie against DB
 4. If valid: Attach user to event.locals.user
-5. TRPC context receives user from locals
-6. Protected procedures check ctx.user
+5. (authed)/+layout.server.ts checks event.locals.user
+6. If missing: redirect(303, '/signin')
+7. Load functions receive user via event.locals
 ```
 
 ### PDF Operation Flow (Client-Side Only)
@@ -147,17 +155,17 @@ Browser downloads result
 ## Phase 3: Monetization (Future)
 
 ### Additional Components
-- `stripeRouter`: Checkout session creation, customer portal
-- `/api/webhooks/+server.ts`: Stripe webhook handler (standard POST, not TRPC)
+- Form action: `checkout` in billing page for session creation
+- `/api/webhooks/+server.ts`: Stripe webhook handler (POST endpoint)
 - Database additions: `stripe_customer_id`, `subscription_status`, `is_pro` in users table
 
 ### Payment Flow
 ```
 1. User clicks "Upgrade to Pro"
-2. TRPC: stripe.createCheckoutSession.mutate()
-3. Redirect to Stripe hosted checkout
+2. POST /billing?/checkout → action creates Stripe session
+3. Action returns redirect to Stripe hosted checkout
 4. User pays
-5. Stripe webhook → /api/webhooks
+5. Stripe webhook → /api/webhooks/+server.ts
 6. Verify signature, update user.is_pro = true
 7. User redirected back, sees Pro features
 ```
@@ -180,34 +188,43 @@ Browser downloads result
 
 1. **Privacy-first**: PDF processing happens in-browser (pdf-lib), never upload files to server
 2. **Performance**: Code-split heavy libraries (PDF.js ~500kb, pdf-lib ~300kb) via dynamic imports
-3. **Type safety**: End-to-end types via TRPC (server procedures → client calls)
+3. **Type safety**: Zod validation in actions, typed ActionData/PageData via SvelteKit
 4. **Security**: WebAuthn for passwordless auth, httpOnly session cookies, challenge TTL
-5. **Scalability**: Stateless TRPC API, horizontally scalable (sessions in DB, not memory)
+5. **Scalability**: Stateless form actions, horizontally scalable (sessions in DB, not memory)
+6. **Progressive enhancement**: Forms work without JS via SvelteKit form actions
 
-## Router Organization
+## Form Action Organization
 
-### Phase 2: authRouter
+### Phase 2: Auth Actions
+
 ```typescript
-authRouter = {
-  getRegistrationOptions: publicProcedure
-  verifyRegistration: publicProcedure
-  getLoginOptions: publicProcedure
-  verifyLogin: publicProcedure
-  logout: protectedProcedure
-}
+// src/routes/signin/+page.server.ts
+export const actions = {
+  getOptions: async ({ request, cookies }) => { ... },  // Generate challenge
+  verify: async ({ request, cookies }) => { ... },      // Verify and create session
+};
+
+// src/routes/(authed)/setup/+page.server.ts
+export const actions = {
+  register: async ({ request, locals }) => { ... },     // Add new passkey
+  rename: async ({ request, locals }) => { ... },       // Rename passkey
+  delete: async ({ request, locals }) => { ... },       // Remove passkey
+};
+
+// src/routes/(authed)/+layout.server.ts
+export const load = async ({ locals }) => {
+  if (!locals.user) redirect(303, '/signin');
+  return { user: locals.user };
+};
 ```
 
-### Phase 3: Additional routers
+### Phase 3: Billing Actions
 ```typescript
-stripeRouter = {
-  createCheckoutSession: protectedProcedure
-  createPortalSession: protectedProcedure
-}
-
-userRouter = {
-  getCurrentUser: protectedProcedure
-  getUsageStats: protectedProcedure      // For rate limiting display
-}
+// src/routes/(authed)/billing/+page.server.ts
+export const actions = {
+  checkout: async ({ locals }) => { ... },              // Create Stripe session
+  portal: async ({ locals }) => { ... },                // Open customer portal
+};
 ```
 
 ## Database Schema (Phase 2)
@@ -266,8 +283,8 @@ CREATE INDEX idx_current_challenge_user_id ON current_challenge(user_id);
 
 | Technology | Why Chosen | Alternatives Considered |
 |------------|-----------|------------------------|
-| SvelteKit | SSR + API routes in one framework, Svelte 5 runes | Next.js (too React-heavy), Remix |
-| TRPC | End-to-end type safety, zero boilerplate | REST (verbose), GraphQL (overkill) |
+| SvelteKit | SSR + form actions + load functions, Svelte 5 runes | Next.js (too React-heavy), Remix |
+| Form Actions | Native SvelteKit, progressive enhancement, CSRF built-in | TRPC (extra dependency), REST (verbose) |
 | pdf-lib | Browser-based, no server upload needed | Server-side processing (privacy violation) |
 | SimpleWebAuthn | Passwordless auth, excellent DX | Auth.js (complex), custom JWT (insecure) |
 | Melt UI | Headless for Svelte 5, full style control | shadcn-svelte (opinionated), Tailwind UI (bloat) |

@@ -1,105 +1,110 @@
-<!-- Example: Passkey registration in SvelteKit component -->
+<!-- Example: Passkey login in SvelteKit with form actions -->
 <script lang="ts">
-  import { trpc } from '$lib/trpc';
-  import { startRegistration } from '@simplewebauthn/browser';
-  import { goto } from '$app/navigation';
+  import { enhance } from '$app/forms';
+  import { startAuthentication } from '@simplewebauthn/browser';
+  import type { ActionData } from './$types';
 
-  let email = $state('');
+  // ActionData from +page.server.ts
+  let { form }: { form: ActionData } = $props();
+
   let loading = $state(false);
   let error = $state('');
 
-  async function registerPasskey() {
+  // Handle the WebAuthn flow after getting options from server
+  async function handleWebAuthn() {
+    if (!form?.options) return;
+
     try {
       loading = true;
       error = '';
 
-      // Step 1: Get registration options from server (type-safe!)
-      const options = await trpc.auth.getRegistrationOptions.query({ email });
+      // Trigger device authenticator (Touch ID, Face ID, security key)
+      const response = await startAuthentication(form.options);
 
-      // Step 2: Trigger device authenticator (Touch ID, Face ID, security key)
-      const response = await startRegistration(options);
-
-      // Step 3: Send response to server for verification
-      const result = await trpc.auth.verifyRegistration.mutate({
-        email,
-        registrationResponse: JSON.stringify(response),
-      });
-
-      if (result.success) {
-        // Session cookie set by server, redirect to dashboard
-        await goto('/dashboard');
-      }
+      // Submit the response via the verify form
+      const verifyForm = document.getElementById('verify-form') as HTMLFormElement;
+      const responseInput = verifyForm.querySelector('input[name="response"]') as HTMLInputElement;
+      responseInput.value = JSON.stringify(response);
+      verifyForm.requestSubmit();
     } catch (err) {
+      loading = false;
       if (err instanceof Error) {
-        // Handle specific errors
-        if (err.name === 'InvalidStateError') {
-          error = 'This authenticator is already registered. Try logging in instead.';
+        if (err.name === 'NotAllowedError') {
+          error = 'Authentication was cancelled or timed out.';
         } else {
           error = err.message;
         }
       }
-    } finally {
-      loading = false;
     }
   }
 
-  async function loginWithPasskey() {
-    try {
-      loading = true;
-      error = '';
+  // Watch for options from server to trigger WebAuthn
+  $effect(() => {
+    if (form?.options) {
+      handleWebAuthn();
+    }
+  });
 
-      // Step 1: Get login options
-      const options = await trpc.auth.getLoginOptions.query({ email });
-
-      // Step 2: Trigger device authenticator
-      const { startAuthentication } = await import('@simplewebauthn/browser');
-      const response = await startAuthentication(options);
-
-      // Step 3: Verify authentication
-      const result = await trpc.auth.verifyLogin.mutate({
-        email,
-        authenticationResponse: JSON.stringify(response),
-      });
-
-      if (result.success) {
-        await goto('/dashboard');
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        error = err.message;
-      }
-    } finally {
+  // Display server errors
+  $effect(() => {
+    if (form?.error) {
+      error = form.error;
       loading = false;
     }
-  }
+  });
 </script>
 
 <div class="auth-form">
-  <h1>Passkey Authentication</h1>
+  <h1>Login with Passkey</h1>
 
-  <input
-    type="email"
-    bind:value={email}
-    placeholder="Enter your email"
-    disabled={loading}
-  />
+  <!-- Step 1: Get authentication options -->
+  <form
+    method="POST"
+    action="?/getOptions"
+    use:enhance={() => {
+      loading = true;
+      error = '';
+      return async ({ update }) => {
+        await update();
+        // WebAuthn triggered by $effect when form.options is set
+      };
+    }}
+  >
+    <input
+      type="email"
+      name="email"
+      placeholder="Enter your email"
+      required
+      disabled={loading}
+    />
 
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
+    {#if error}
+      <p class="error">{error}</p>
+    {/if}
 
-  <div class="button-group">
-    <button onclick={registerPasskey} disabled={loading || !email}>
-      {loading ? 'Processing...' : 'Register Passkey'}
+    <button type="submit" disabled={loading}>
+      {loading ? 'Authenticating...' : 'Continue with Passkey'}
     </button>
+  </form>
 
-    <button onclick={loginWithPasskey} disabled={loading || !email}>
-      {loading ? 'Processing...' : 'Login with Passkey'}
-    </button>
-  </div>
+  <!-- Step 2: Verify authentication (hidden, submitted programmatically) -->
+  <form
+    id="verify-form"
+    method="POST"
+    action="?/verify"
+    use:enhance
+    hidden
+  >
+    <input type="hidden" name="email" value={form?.email ?? ''} />
+    <input type="hidden" name="response" />
+  </form>
 
   <p class="help-text">
     Passkeys use your device's Touch ID, Face ID, or security key for passwordless authentication.
+  </p>
+
+  <p class="signup-link">
+    Don't have an account? <a href="/signup">Register a passkey</a>
   </p>
 </div>
 
@@ -110,28 +115,24 @@
     padding: 2rem;
   }
 
-  input {
+  input[type="email"] {
     width: 100%;
     padding: 0.75rem;
     margin-bottom: 1rem;
     border: 1px solid #ddd;
     border-radius: 4px;
-  }
-
-  .button-group {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    box-sizing: border-box;
   }
 
   button {
-    flex: 1;
+    width: 100%;
     padding: 0.75rem;
     background: #007bff;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    margin-bottom: 1rem;
   }
 
   button:disabled {
@@ -142,10 +143,23 @@
   .error {
     color: #dc3545;
     margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: #fee;
+    border-radius: 4px;
   }
 
   .help-text {
     font-size: 0.875rem;
     color: #666;
+    margin-bottom: 1rem;
+  }
+
+  .signup-link {
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .signup-link a {
+    color: #007bff;
   }
 </style>

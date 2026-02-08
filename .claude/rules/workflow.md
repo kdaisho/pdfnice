@@ -92,16 +92,15 @@ R2_BUCKET_NAME=pdfnice-projects
 ### Monitoring & Observability
 
 - [ ] Set up error monitoring (Sentry recommended)
-- [ ] Configure logging for TRPC procedures
+- [ ] Configure logging for form actions
 - [ ] Monitor database query performance
 - [ ] Set up uptime monitoring (BetterStack, UptimeRobot)
 
 ## Resources
 
 ### Documentation
-- [SvelteKit Docs](https://kit.svelte.dev/docs)
-- [TRPC](https://trpc.io/) - End-to-end type-safe APIs
-- [TRPC with SvelteKit](https://trpc.io/docs/server/adapters/fetch) - Fetch adapter
+- [SvelteKit Docs](https://kit.svelte.dev/docs) - Framework reference
+- [SvelteKit Form Actions](https://kit.svelte.dev/docs/form-actions) - Server-side form handling
 - [Melt UI](https://melt-ui.com/) - Headless UI library for Svelte 5
 - [SimpleWebAuthn](https://simplewebauthn.dev/) - Passkey authentication
 - [WebAuthn Guide](https://webauthn.guide/) - Understanding WebAuthn concepts
@@ -112,6 +111,3 @@ R2_BUCKET_NAME=pdfnice-projects
 ### Phase 3 Resources (Future)
 - [Stripe Webhooks](https://stripe.com/docs/webhooks)
 - [Stripe Tax](https://stripe.com/tax)
-
-### Reference Implementations
-- [frontend-community-simple](https://github.com/kdaisho/frontend-community-simple) - Production-quality SvelteKit + SimpleWebAuthn + TRPC authentication

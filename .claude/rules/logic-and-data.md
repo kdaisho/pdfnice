@@ -6,98 +6,136 @@ description: "Business logic, data models, and API patterns for PDF Splitter"
 
 ## Phase 2: Auth Foundation (Current Priority)
 
-### TRPC Setup
+### SvelteKit Form Actions
 
-**Installation**:
-```bash
-pnpm add @trpc/server @trpc/client zod
-```
+**Why Form Actions over tRPC**:
+- **Native SvelteKit**: No extra dependencies
+- **Progressive enhancement**: Forms work without JavaScript
+- **Built-in CSRF protection**: SvelteKit handles this automatically
+- **Simpler mental model**: Standard web forms, no abstraction layer
 
 **Core Concepts**:
-- **End-to-end type safety**: Server procedure types automatically flow to client
-- **Zero boilerplate**: No manual API client code, no code generation
-- **Context**: Each TRPC request receives user session from SvelteKit `event.locals`
-- **Procedures**: `publicProcedure` (no auth), `protectedProcedure` (requires auth)
+- **Actions**: Server functions triggered by form POST
+- **Load functions**: Fetch data for page rendering
+- **ActionData**: Return data from actions to the page
+- **use:enhance**: Progressive enhancement for JS-enabled clients
 
 **Setup locations**:
-- Server: `src/lib/server/trpc.ts` (TRPC instance + context)
-- Routers: `src/lib/server/routers/*.ts`
-- Endpoint: `src/routes/api/trpc/[...trpc]/+server.ts`
-- Client: `src/lib/trpc.ts`
+- Actions: `src/routes/**/+page.server.ts` (export `actions`)
+- Load: `src/routes/**/+page.server.ts` or `+layout.server.ts` (export `load`)
+- Hooks: `src/hooks.server.ts` (session validation)
 
-**Code examples**: See `examples/trpc-setup/` for full implementation
+**Code examples**: See `examples/form-actions/` for full implementation
 
-#### TRPC Context
-
-Context provides session data to all procedures:
+#### Form Action Pattern
 
 ```typescript
-// src/lib/server/trpc.ts
-export async function createContext(event: RequestEvent) {
-  return {
-    user: event.locals.user,  // From SvelteKit hooks
-    cookies: event.cookies,
-  };
-}
-```
+// src/routes/signin/+page.server.ts
+import { fail, redirect } from '@sveltejs/kit';
+import { z } from 'zod';
+import type { Actions } from './$types';
 
-#### Protected Procedure Middleware
-
-```typescript
-const isAuthed = t.middleware(({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
-  return next({ ctx: { user: ctx.user } });
+const emailSchema = z.object({
+  email: z.string().email(),
 });
 
-export const protectedProcedure = t.procedure.use(isAuthed);
+export const actions: Actions = {
+  getOptions: async ({ request, cookies }) => {
+    const formData = await request.formData();
+    const result = emailSchema.safeParse({ email: formData.get('email') });
+
+    if (!result.success) {
+      return fail(400, { error: 'Invalid email' });
+    }
+
+    // Generate WebAuthn challenge...
+    return { options: challengeOptions };
+  },
+
+  verify: async ({ request, cookies }) => {
+    // Verify WebAuthn response, create session...
+    redirect(303, '/dashboard');
+  },
+};
+```
+
+#### Protected Routes via Layout
+
+```typescript
+// src/routes/(authed)/+layout.server.ts
+import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
+
+export const load: LayoutServerLoad = async ({ locals }) => {
+  if (!locals.user) {
+    redirect(303, '/signin');
+  }
+  return { user: locals.user };
+};
 ```
 
 ### SimpleWebAuthn Integration
 
 **Installation**:
 ```bash
-pnpm add @simplewebauthn/server @simplewebauthn/browser
+pnpm add @simplewebauthn/server @simplewebauthn/browser zod
 ```
 
 **Architecture**: Challenge-response authentication
-- Client (`@simplewebauthn/browser`): Interacts with device authenticator (Touch ID, Face ID, security key)
+- Client (`@simplewebauthn/browser`): Interacts with device authenticator (Touch ID/Face ID)
 - Server (`@simplewebauthn/server`): Generates challenges, verifies responses
 
-**Integration pattern**: SimpleWebAuthn is exposed via TRPC procedures (not REST endpoints)
+**Integration pattern**: SimpleWebAuthn exposed via SvelteKit form actions
 
 #### Registration Flow
 
-```typescript
-// authRouter procedures:
-1. auth.getRegistrationOptions(email)    → Returns PublicKeyCredentialCreationOptionsJSON
-2. [Client calls startRegistration()]
-3. auth.verifyRegistration(email, response) → Saves passkey, creates session
+```
+1. POST /setup?/getOptions     → Action returns PublicKeyCredentialCreationOptionsJSON
+2. Client calls startRegistration() with options
+3. POST /setup?/verify         → Action saves passkey, creates session
 ```
 
-**Client example**:
-```typescript
-import { trpc } from '$lib/trpc';
-import { startRegistration } from '@simplewebauthn/browser';
+**Client example** (`+page.svelte`):
+```svelte
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import { startRegistration } from '@simplewebauthn/browser';
+  import type { ActionData } from './$types';
 
-const options = await trpc.auth.getRegistrationOptions.query({ email });
-const response = await startRegistration(options);
-const result = await trpc.auth.verifyRegistration.mutate({
-  email,
-  registrationResponse: JSON.stringify(response),
-});
+  export let form: ActionData;
+
+  async function handleRegistration(event: SubmitEvent) {
+    // After getOptions action returns, call WebAuthn API
+    if (form?.options) {
+      const response = await startRegistration(form.options);
+      // Submit verification form with response
+      const verifyForm = document.getElementById('verify-form') as HTMLFormElement;
+      const input = verifyForm.querySelector('input[name="response"]') as HTMLInputElement;
+      input.value = JSON.stringify(response);
+      verifyForm.requestSubmit();
+    }
+  }
+</script>
+
+<form method="POST" action="?/getOptions" use:enhance on:submit={handleRegistration}>
+  <input name="email" type="email" required />
+  <button type="submit">Register</button>
+</form>
+
+<form id="verify-form" method="POST" action="?/verify" use:enhance hidden>
+  <input name="email" type="hidden" value={form?.email} />
+  <input name="response" type="hidden" />
+</form>
 ```
 
-**Server example**: See `examples/webauthn/auth-router.ts` for full TRPC router implementation
+**Server example**: See `examples/form-actions/auth-actions.ts`
 
 #### Authentication Flow
 
-```typescript
-// authRouter procedures:
-1. auth.getLoginOptions(email)           → Returns PublicKeyCredentialRequestOptionsJSON
-2. [Client calls startAuthentication()]
-3. auth.verifyLogin(email, response)     → Verifies signature, creates session
+```
+1. POST /signin?/getOptions    → Action returns PublicKeyCredentialRequestOptionsJSON
+2. Client calls startAuthentication() with options
+3. POST /signin?/verify        → Action verifies signature, creates session cookie
 ```
 
 #### Critical Security Implementation
@@ -111,7 +149,7 @@ const result = await trpc.auth.verifyRegistration.mutate({
 **Rate Limiting**:
 - In-memory Map: 10 challenge requests per minute per email
 - Clean up stale entries every 5 minutes
-- Location: `authRouter` before `generateRegistrationOptions()`
+- Location: Form action before `generateRegistrationOptions()`
 
 **Counter Validation**:
 - Store counter in `passkeys.counter` column
@@ -208,39 +246,45 @@ export async function saveChallenge(userId: string, challenge: string, registrat
 
 **In-memory rate limiter** (simple, resets on server restart):
 ```typescript
+// src/lib/server/rate-limit.ts
+import { fail } from '@sveltejs/kit';
+
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
-function checkRateLimit(email: string): void {
+export function checkRateLimit(email: string): { error: string } | null {
   const now = Date.now();
   const key = email.toLowerCase();
   const record = rateLimitMap.get(key);
 
   if (!record || now > record.resetTime) {
     rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return;
+    return null;
   }
 
   if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
-    throw new TRPCError({
-      code: 'TOO_MANY_REQUESTS',
-      message: 'Too many authentication attempts. Please try again later.',
-    });
+    return { error: 'Too many authentication attempts. Please try again later.' };
   }
 
   record.count++;
+  return null;
 }
 
-// Cleanup every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of rateLimitMap.entries()) {
-    if (now > record.resetTime) {
-      rateLimitMap.delete(key);
+// Usage in form action:
+export const actions = {
+  getOptions: async ({ request }) => {
+    const formData = await request.formData();
+    const email = formData.get('email') as string;
+
+    const rateLimitError = checkRateLimit(email);
+    if (rateLimitError) {
+      return fail(429, rateLimitError);
     }
-  }
-}, 5 * 60 * 1000);
+
+    // Continue with WebAuthn...
+  },
+};
 ```
 
 **Future**: Use Redis for distributed rate limiting in production
@@ -303,47 +347,77 @@ async function mergePDFs(files: File[]) {
 **When to implement**: After Phase 2 auth is stable and users request paid features
 
 **Components needed**:
-- `stripeRouter` with `createCheckoutSession`, `createPortalSession` procedures
-- `/api/webhooks/+server.ts` for Stripe webhook (standard POST, not TRPC)
+- Form actions: `checkout`, `portal` in billing page
+- `/api/webhooks/+server.ts` for Stripe webhook (POST endpoint)
 - Add `stripe_customer_id`, `subscription_status`, `is_pro` to `users` table
 
 **Payment flow**:
 ```typescript
-// Client
-const { url } = await trpc.stripe.createCheckoutSession.mutate();
-window.location.href = url; // Redirect to Stripe
+// src/routes/(authed)/billing/+page.server.ts
+import { redirect } from '@sveltejs/kit';
+import Stripe from 'stripe';
+import type { Actions } from './$types';
 
-// Webhook (after payment)
-if (event.type === 'checkout.session.completed') {
-  await db.update(users)
-    .set({ is_pro: true, subscription_status: 'active' })
-    .where(eq(users.email, session.customer_email));
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+export const actions: Actions = {
+  checkout: async ({ locals }) => {
+    const session = await stripe.checkout.sessions.create({
+      customer_email: locals.user.email,
+      line_items: [{ price: 'price_xxx', quantity: 1 }],
+      mode: 'subscription',
+      success_url: `${process.env.PUBLIC_ORIGIN}/billing?success=true`,
+      cancel_url: `${process.env.PUBLIC_ORIGIN}/billing`,
+    });
+
+    redirect(303, session.url!);
+  },
+};
 ```
 
-**Code examples**: See `examples/trpc-setup/stripe-router.ts` (to be created in Phase 3)
-
-**Critical**: Stripe webhooks MUST verify signatures:
+**Webhook handler** (`/api/webhooks/+server.ts`):
 ```typescript
-const event = stripe.webhooks.constructEvent(
-  body,
-  sig,
-  process.env.STRIPE_WEBHOOK_SECRET!
-);
+import type { RequestHandler } from './$types';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+export const POST: RequestHandler = async ({ request }) => {
+  const body = await request.text();
+  const sig = request.headers.get('stripe-signature')!;
+
+  // CRITICAL: Verify webhook signature
+  const event = stripe.webhooks.constructEvent(
+    body,
+    sig,
+    process.env.STRIPE_WEBHOOK_SECRET!
+  );
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    await db.update(users)
+      .set({ is_pro: true, subscription_status: 'active' })
+      .where(eq(users.email, session.customer_email));
+  }
+
+  return new Response('OK', { status: 200 });
+};
 ```
 
 ### Feature Gating
 
-**TRPC middleware** (Phase 3):
+**Load function check** (Phase 3):
 ```typescript
-const isProUser = t.middleware(({ ctx, next }) => {
-  if (!ctx.user?.is_pro) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'Pro subscription required' });
-  }
-  return next({ ctx });
-});
+// src/routes/(authed)/(pro)/+layout.server.ts
+import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 
-export const proProcedure = protectedProcedure.use(isProUser);
+export const load: LayoutServerLoad = async ({ locals }) => {
+  if (!locals.user?.is_pro) {
+    redirect(303, '/billing?upgrade=true');
+  }
+  return { user: locals.user };
+};
 ```
 
 **Pro Features** (future):
@@ -406,16 +480,8 @@ CREATE TABLE pdf_projects (
 
 ## Reference Implementations
 
-**Production example**: [frontend-community-simple](https://github.com/kdaisho/frontend-community-simple)
-
-**Key learnings**:
-- TRPC integration: All auth procedures are type-safe routers
+**Key learnings** (from prior projects):
 - Challenge management: Separate `current_challenge` table with TTL validation
 - Security: Rate limiting, counter validation, userHandle verification
 - DAO pattern: Clean separation of DB queries and business logic
-- Kysely migrations: Schema versioning with type safety
-
-**Code to review**:
-- `apps/server/src/services/auth/index.ts` - authRouter implementation
-- `apps/server/src/services/auth/dao.ts` - DAO pattern
-- `apps/server/database/migrations/` - Database schema evolution
+- Form actions: Natural fit for auth flows (submit email → get challenge → verify)

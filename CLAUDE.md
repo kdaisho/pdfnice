@@ -4,13 +4,13 @@
 
 **Privacy-First**: All PDF processing happens in-browser using pdf-lib. Files never uploaded to server.
 
-**Edge-First Hybrid**: TRPC API for auth/payments, client-side heavy lifting for PDF operations.
+**SvelteKit-Native**: Form actions for auth/payments, client-side heavy lifting for PDF operations.
 
 **Freemium Model**: Free viewer/search, paid features (merge/split/compress) with anti-abuse auth.
 
 **Phased Development**:
 - **Phase 1** ✅: Basic PDF viewer with search
-- **Phase 2** (Current): Auth foundation (SimpleWebAuthn + TRPC)
+- **Phase 2** (Current): Auth foundation (SimpleWebAuthn + Form Actions)
 - **Phase 3** (Future): Stripe monetization
 - **Phase 4** (Optional): Cloud sync if user-demanded
 
@@ -34,8 +34,8 @@ pnpm test             # Run Vitest tests
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| Framework | SvelteKit 2.x + Svelte 5 | SSR + API routes |
-| API Layer | TRPC | End-to-end type safety |
+| Framework | SvelteKit 2.x + Svelte 5 | SSR + API routes + Form actions |
+| API Layer | Form Actions | Built-in, progressive enhancement, CSRF protection |
 | PDF Processing | pdf-lib (browser) | Privacy-first, no server upload |
 | PDF Rendering | PDF.js | Canvas + text layer for search |
 | UI Components | Melt UI | Headless, accessible for Svelte 5 |
@@ -62,7 +62,7 @@ pnpm test             # Run Vitest tests
 **Auth Foundation** - Enable user accounts to prevent abuse:
 - Database setup (users, passkeys, sessions, current_challenge)
 - SimpleWebAuthn passkey authentication (Touch ID/Face ID)
-- TRPC routers (authRouter)
+- Form actions for auth flows (+page.server.ts)
 - SvelteKit hooks for session validation
 - Rate limiting (10 operations/day for free tier)
 - PDF operations UI (merge/split using pdf-lib in browser)
@@ -87,16 +87,17 @@ pnpm test             # Run Vitest tests
 pdf-splitter/
 ├── src/
 │   ├── routes/
-│   │   ├── +page.svelte              # Main PDF viewer (385 lines)
+│   │   ├── +page.svelte              # Main PDF viewer
 │   │   ├── +page.server.ts           # Minimal server load
 │   │   ├── (authed)/                 # Protected routes (Phase 2+)
-│   │   └── api/trpc/[...trpc]/       # TRPC endpoint (Phase 2+)
+│   │   │   └── dashboard/+page.server.ts  # Load + actions
+│   │   ├── signin/+page.server.ts    # Auth form actions
+│   │   └── api/webhooks/+server.ts   # Stripe webhooks (Phase 3)
 │   ├── lib/
 │   │   ├── server/                   # Server-only code (Phase 2+)
-│   │   │   ├── trpc.ts               # TRPC instance + context
 │   │   │   ├── db/                   # Database access layer
-│   │   │   └── routers/              # TRPC routers
-│   │   ├── trpc.ts                   # TRPC client (Phase 2+)
+│   │   │   ├── auth.ts               # WebAuthn helpers
+│   │   │   └── session.ts            # Session management
 │   │   ├── components/               # Reusable Svelte components
 │   │   └── stores/                   # Svelte stores
 │   ├── hooks.server.ts               # Session validation (Phase 2+)
@@ -104,13 +105,13 @@ pdf-splitter/
 ├── .claude/
 │   └── rules/                        # Modular project rules
 │       ├── architecture.md           # File structure, tech decisions
-│       ├── logic-and-data.md         # TRPC, auth, DB, business logic
+│       ├── logic-and-data.md         # Form actions, auth, DB, business logic
 │       ├── testing-and-qa.md         # Code quality, security standards
 │       ├── ui-patterns.md            # Components, styling, UX
 │       └── workflow.md               # Environment, deployment, resources
 ├── examples/                         # Code examples (boilerplate extracted)
-│   ├── trpc-setup/
-│   ├── webauthn/
+│   ├── form-actions/                 # Auth form action examples
+│   ├── webauthn/                     # WebAuthn client/server
 │   ├── pdf-operations.ts
 │   └── melt-ui-dialog.svelte
 ├── package.json
@@ -133,7 +134,7 @@ This file is the **high-level guide**. For detailed instructions:
 
 ### **Business Logic & Data**
 → `.claude/rules/logic-and-data.md`
-- TRPC setup and usage
+- Form actions setup and usage
 - SimpleWebAuthn integration (passkey auth)
 - Database access layer (DAO pattern)
 - Session management
@@ -163,7 +164,7 @@ This file is the **high-level guide**. For detailed instructions:
 
 ### **Code Examples**
 → `examples/` directory
-- TRPC setup boilerplate
+- Form actions patterns (auth flows)
 - WebAuthn client/server examples
 - PDF operations (pdf-lib)
 - Melt UI component examples
@@ -179,7 +180,7 @@ This file is the **high-level guide**. For detailed instructions:
    - pdf-lib: ~300kb (loaded when user performs operations)
    - Initial bundle: <100kb
 
-3. **Type Safety**: End-to-end types via TRPC. Server procedure types automatically flow to client with zero boilerplate.
+3. **Type Safety**: Zod validation in form actions, typed ActionData/PageData via SvelteKit.
 
 4. **Security**:
    - WebAuthn: HTTPS required, 5-min challenge TTL, counter validation, userHandle verification
@@ -195,8 +196,8 @@ This file is the **high-level guide**. For detailed instructions:
 ### Phase 2: Auth Foundation (Next)
 - [x] Plan auth architecture
 - [ ] Database schema + migrations (users, passkeys, sessions, current_challenge)
-- [ ] TRPC setup (context, routers, endpoint, client)
-- [ ] SimpleWebAuthn authRouter (registration/login flows)
+- [ ] Form actions for auth (+page.server.ts with actions)
+- [ ] SimpleWebAuthn integration (registration/login flows)
 - [ ] SvelteKit hooks (session validation)
 - [ ] Rate limiting (in-memory Map)
 - [ ] Protected routes (/dashboard, /setup)
@@ -204,10 +205,10 @@ This file is the **high-level guide**. For detailed instructions:
 
 ### Phase 3: Monetization (Future)
 - [ ] Stripe setup (product, prices, test mode)
-- [ ] stripeRouter (createCheckoutSession, createPortalSession)
+- [ ] Checkout form action (createCheckoutSession, createPortalSession)
 - [ ] Webhook endpoint (/api/webhooks with signature verification)
 - [ ] Database additions (stripe_customer_id, subscription_status, is_pro)
-- [ ] Feature gating (protectedProcedure → proProcedure)
+- [ ] Feature gating (load function checks is_pro)
 - [ ] Stripe Tax configuration
 
 ### Phase 4: Cloud Sync (Optional)
@@ -272,27 +273,19 @@ This file is the **high-level guide**. For detailed instructions:
 
 ## Reference Implementation
 
-**Production Example**: [frontend-community-simple](https://github.com/kdaisho/frontend-community-simple)
-
-**Key Learnings**:
-- TRPC + SimpleWebAuthn integration
+**Key Learnings** (from prior projects):
+- SimpleWebAuthn challenge-response pattern
 - Challenge management (separate table, TTL validation)
 - Security hardening (rate limiting, counter validation, userHandle check)
 - DAO pattern (clean separation of DB queries)
-- Kysely migrations (schema versioning)
-
-**Files to Review**:
-- `apps/server/src/services/auth/index.ts` - authRouter
-- `apps/server/src/services/auth/dao.ts` - DAO pattern
-- `apps/server/database/migrations/` - Schema evolution
 
 ---
 
 ## Resources
 
 **Core Documentation**:
-- [SvelteKit](https://kit.svelte.dev/docs)
-- [TRPC](https://trpc.io/)
+- [SvelteKit](https://kit.svelte.dev/docs) - Form actions, load functions, hooks
+- [SvelteKit Form Actions](https://kit.svelte.dev/docs/form-actions)
 - [SimpleWebAuthn](https://simplewebauthn.dev/)
 - [Melt UI](https://melt-ui.com/)
 - [PDF.js API](https://mozilla.github.io/pdf.js/api/)
@@ -307,11 +300,12 @@ This file is the **high-level guide**. For detailed instructions:
 
 ## Common Tasks
 
-### Add a new TRPC procedure
-1. Define in `src/lib/server/routers/*.ts`
-2. Add to root router in `_app.ts`
-3. TypeScript types auto-flow to client
-4. Call via `trpc.routerName.procedureName.query()` or `.mutate()`
+### Add a new form action
+1. Create `+page.server.ts` in the route directory
+2. Export `actions` object with named actions
+3. Validate input with Zod
+4. Return data via `fail()` or redirect via `redirect()`
+5. Access in Svelte via `form` prop from `use:enhance`
 
 ### Add a new protected route
 1. Create in `src/routes/(authed)/`
