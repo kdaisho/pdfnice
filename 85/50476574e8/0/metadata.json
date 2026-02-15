@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "8550476574e8",
+  "session_id": "09d6e952-744f-45a7-bb1e-dddd106f85eb",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-15T15:57:28.272115Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/rules/workflow.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "ceb64040-6d76-409d-b228-0ec8e52709e0",
+  "token_usage": {
+    "input_tokens": 126,
+    "cache_creation_tokens": 42641,
+    "cache_read_tokens": 457822,
+    "output_tokens": 55,
+    "api_call_count": 14
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-15T15:57:28.219136Z",
+    "agent_lines": 18,
+    "human_added": 30,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 48,
+    "agent_percentage": 37.5
+  },
+  "transcript_path": ".claude/projects/-Users-daishokomiyama-Code-pdf-splitter/09d6e952-744f-45a7-bb1e-dddd106f85eb.jsonl"
+}
