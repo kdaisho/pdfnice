@@ -46,6 +46,7 @@
 	let searchInputEl = $state<HTMLInputElement | null>(null);
 	let matchCase = $state<boolean>(false);
 	let matchWholeWord = $state<boolean>(false);
+	let showSearchPopup = $state<boolean>(false);
 
 	function performSearch() {
 		// Clear previous highlights
@@ -194,7 +195,23 @@
 		if (event.key === 'Escape') {
 			searchQuery = '';
 			performSearch();
+			showSearchPopup = false;
 		}
+	}
+
+	function openSearch() {
+		showSearchPopup = true;
+		// Focus after DOM update
+		setTimeout(() => {
+			searchInputEl?.focus();
+			searchInputEl?.select();
+		}, 0);
+	}
+
+	function closeSearch() {
+		searchQuery = '';
+		performSearch();
+		showSearchPopup = false;
 	}
 
 	function toggleMatchCase() {
@@ -210,12 +227,11 @@
 	$effect(() => {
 		const hasPdf = Boolean(pdfUrl);
 		function onKeydown(e: KeyboardEvent) {
-			// Cmd+f: Focus search
+			// Cmd+f: Open search popup (always prevent browser's native find dialog)
 			if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+				e.preventDefault();
 				if (hasPdf) {
-					e.preventDefault();
-					searchInputEl?.focus();
-					performSearch();
+					openSearch();
 				}
 			}
 			// Cmd+g: Next match
@@ -340,6 +356,28 @@
 <header class="nav-header">
 	<h1>PDF Splitter</h1>
 	<nav>
+		{#if pdfUrl}
+			<button
+				onclick={openSearch}
+				class="search-icon-btn"
+				title="Search in document (Cmd+F)"
+				aria-label="Search in document"
+			>
+				<svg
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="11" cy="11" r="8" />
+					<path d="M21 21l-4.35-4.35" />
+				</svg>
+			</button>
+		{/if}
 		{#if data.user}
 			<a href="/dashboard">Dashboard</a>
 		{:else}
@@ -349,40 +387,84 @@
 </header>
 
 <div class="content">
-	{#if pdfUrl}
-		<div class="search-bar">
-			<input
-				type="text"
-				placeholder="Search in PDF..."
-				bind:value={searchQuery}
-				bind:this={searchInputEl}
-				oninput={performSearch}
-				onkeydown={handleSearchKeydown}
-				class="search-input"
-			/>
-			<button
-				onclick={toggleMatchCase}
-				class="toggle-btn"
-				class:active={matchCase}
-				title="Match Case (Cmd+Opt+C)"
-			>
-				Aa
-			</button>
-			<button
-				onclick={toggleMatchWholeWord}
-				class="toggle-btn"
-				class:active={matchWholeWord}
-				title="Match Whole Word (Cmd+Opt+W)"
-			>
-				<span class="whole-word-icon">[ab]</span>
-			</button>
-			{#if matchCount > 0}
-				<span class="match-count">{currentMatchIndex + 1} / {matchCount}</span>
-				<button onclick={prevMatch} class="nav-btn" title="Previous (Cmd+Shift+G)">&#9650;</button>
-				<button onclick={nextMatch} class="nav-btn" title="Next (Cmd+G)">&#9660;</button>
-			{:else if searchQuery.trim()}
-				<span class="match-count">No matches</span>
-			{/if}
+	{#if pdfUrl && showSearchPopup}
+		<div class="search-popup">
+			<div class="search-input-wrapper">
+				<input
+					type="text"
+					placeholder="Find in document"
+					bind:value={searchQuery}
+					bind:this={searchInputEl}
+					oninput={performSearch}
+					onkeydown={handleSearchKeydown}
+					class="search-input"
+				/>
+				<span class="match-count">
+					{#if matchCount > 0}
+						{currentMatchIndex + 1} of {matchCount}
+					{:else if searchQuery.trim()}
+						No results
+					{/if}
+				</span>
+			</div>
+			<div class="search-controls">
+				<button
+					onclick={toggleMatchCase}
+					class="toggle-btn"
+					class:active={matchCase}
+					title="Match Case (Cmd+Opt+C)"
+					aria-label="Match case"
+					aria-pressed={matchCase}
+				>
+					Aa
+				</button>
+				<button
+					onclick={toggleMatchWholeWord}
+					class="toggle-btn"
+					class:active={matchWholeWord}
+					title="Match Whole Word (Cmd+Opt+W)"
+					aria-label="Match whole word"
+					aria-pressed={matchWholeWord}
+				>
+					<span class="whole-word-icon">W</span>
+				</button>
+				<div class="nav-buttons">
+					<button
+						onclick={prevMatch}
+						class="nav-btn"
+						title="Previous (Cmd+Shift+G)"
+						aria-label="Previous match"
+						disabled={matchCount === 0}
+					>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+							<path d="M6 3L1 8h10L6 3z" />
+						</svg>
+					</button>
+					<button
+						onclick={nextMatch}
+						class="nav-btn"
+						title="Next (Cmd+G)"
+						aria-label="Next match"
+						disabled={matchCount === 0}
+					>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+							<path d="M6 9L1 4h10L6 9z" />
+						</svg>
+					</button>
+				</div>
+				<button
+					onclick={closeSearch}
+					class="close-btn"
+					title="Close (Escape)"
+					aria-label="Close search"
+				>
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+						<path
+							d="M9.5 3.2L8.8 2.5 6 5.3 3.2 2.5 2.5 3.2 5.3 6 2.5 8.8l.7.7L6 6.7l2.8 2.8.7-.7L6.7 6z"
+						/>
+					</svg>
+				</button>
+			</div>
 		</div>
 	{/if}
 
@@ -413,6 +495,12 @@
 		color: #333;
 	}
 
+	.nav-header nav {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
 	.nav-header nav a {
 		color: #007bff;
 		text-decoration: none;
@@ -424,6 +512,30 @@
 
 	.nav-header nav a:hover {
 		background: #f0f0f0;
+	}
+
+	.search-icon-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		background: transparent;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		cursor: pointer;
+		color: #6b7280;
+		transition:
+			background 0.15s,
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	.search-icon-btn:hover {
+		background: #f3f4f6;
+		border-color: #9ca3af;
+		color: #374151;
 	}
 
 	.content {
@@ -462,66 +574,112 @@
 		box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
 	}
 
-	/* Search bar styles */
-	.search-bar {
-		position: sticky;
-		top: 0;
-		z-index: 100;
+	/* Search popup styles (browser-like) */
+	.search-popup {
+		position: fixed;
+		top: 80px;
+		right: 24px;
+		z-index: 1000;
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin: 1em 0;
-		padding: 8px 12px;
-		background: #f5f5f5;
-		border-radius: 6px;
-		border: 1px solid #ddd;
+		gap: 6px;
+		padding: 6px 8px;
+		background: #fff;
+		border-radius: 8px;
+		box-shadow:
+			0 2px 8px rgba(0, 0, 0, 0.15),
+			0 0 1px rgba(0, 0, 0, 0.1);
+		border: 1px solid #d1d5db;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
+
+	.search-input-wrapper {
+		display: flex;
+		align-items: center;
+		background: #f3f4f6;
+		border-radius: 4px;
+		padding: 0 8px;
+		border: 1px solid transparent;
+		transition: border-color 0.15s;
+	}
+
+	.search-input-wrapper:focus-within {
+		border-color: #3b82f6;
+		background: #fff;
 	}
 
 	.search-input {
-		flex: 1;
-		padding: 6px 10px;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		font-size: 14px;
-		min-width: 200px;
+		border: none;
+		background: transparent;
+		padding: 6px 0;
+		font-size: 13px;
+		width: 180px;
+		outline: none;
 	}
 
-	.search-input:focus {
-		outline: none;
-		border-color: #0070f3;
-		box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+	.search-input::placeholder {
+		color: #9ca3af;
 	}
 
 	.match-count {
-		font-size: 13px;
-		color: #666;
+		font-size: 12px;
+		color: #6b7280;
 		white-space: nowrap;
+		min-width: 60px;
+		text-align: right;
+		padding-left: 8px;
+	}
+
+	.search-controls {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.nav-buttons {
+		display: flex;
+		align-items: center;
+		margin-left: 4px;
 	}
 
 	.nav-btn {
-		padding: 4px 8px;
-		background: #fff;
-		border: 1px solid #ccc;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		background: transparent;
+		border: none;
 		border-radius: 4px;
 		cursor: pointer;
-		font-size: 10px;
-		line-height: 1;
+		color: #374151;
+		transition: background 0.15s;
 	}
 
-	.nav-btn:hover {
-		background: #e9e9e9;
+	.nav-btn:hover:not(:disabled) {
+		background: #f3f4f6;
+	}
+
+	.nav-btn:disabled {
+		color: #d1d5db;
+		cursor: default;
 	}
 
 	.toggle-btn {
-		padding: 4px 8px;
-		background: #fff;
-		border: 1px solid #ccc;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		background: transparent;
+		border: 1px solid transparent;
 		border-radius: 4px;
 		cursor: pointer;
 		font-size: 12px;
-		font-weight: 500;
-		line-height: 1;
-		color: #666;
+		font-weight: 600;
+		color: #6b7280;
 		transition:
 			background 0.15s,
 			border-color 0.15s,
@@ -529,23 +687,46 @@
 	}
 
 	.toggle-btn:hover {
-		background: #e9e9e9;
+		background: #f3f4f6;
 	}
 
 	.toggle-btn.active {
-		background: #0070f3;
-		border-color: #0070f3;
-		color: #fff;
+		background: #dbeafe;
+		border-color: #3b82f6;
+		color: #1d4ed8;
 	}
 
 	.toggle-btn.active:hover {
-		background: #005bb5;
-		border-color: #005bb5;
+		background: #bfdbfe;
 	}
 
 	.whole-word-icon {
-		font-family: monospace;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-size: 11px;
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.close-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		background: transparent;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		color: #6b7280;
+		margin-left: 2px;
+		transition: background 0.15s;
+	}
+
+	.close-btn:hover {
+		background: #f3f4f6;
+		color: #374151;
 	}
 
 	/* Search highlight overlay styles */
