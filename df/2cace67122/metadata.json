@@ -3,7 +3,7 @@
   "checkpoint_id": "df2cace67122",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 2,
+  "checkpoints_count": 3,
   "files_touched": [
     "packages/web/src/routes/+page.svelte"
   ],
@@ -14,13 +14,20 @@
       "context": "/df/2cace67122/0/context.md",
       "content_hash": "/df/2cace67122/0/content_hash.txt",
       "prompt": "/df/2cace67122/0/prompt.txt"
+    },
+    {
+      "metadata": "/df/2cace67122/1/metadata.json",
+      "transcript": "/df/2cace67122/1/full.jsonl",
+      "context": "/df/2cace67122/1/context.md",
+      "content_hash": "/df/2cace67122/1/content_hash.txt",
+      "prompt": "/df/2cace67122/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 100,
-    "cache_creation_tokens": 35163,
-    "cache_read_tokens": 477569,
-    "output_tokens": 25,
-    "api_call_count": 12
+    "input_tokens": 238,
+    "cache_creation_tokens": 69501,
+    "cache_read_tokens": 1187816,
+    "output_tokens": 70,
+    "api_call_count": 29
   }
 }

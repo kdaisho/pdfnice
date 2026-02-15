@@ -1,0 +1,4 @@
+search-pop needs brush-up:
+- it should appear once user presses Super+f, should not be there by default
+- the dismiss button 'x' is not working. make it work, and also ESC key hit should dismiss it
+- for non-poweruser, a search icon should be in the nav
