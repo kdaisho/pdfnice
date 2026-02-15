@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "8550476574e8",
+  "session_id": "7d61cf2b-9a48-465c-b358-115109ffb442",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-15T15:57:28.481105Z",
+  "branch": "main",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "packages/web/src/routes/+page.svelte"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "d379b89c-3239-412c-b350-db11ddf7b172",
+  "token_usage": {
+    "input_tokens": 296,
+    "cache_creation_tokens": 53930,
+    "cache_read_tokens": 1905635,
+    "output_tokens": 77,
+    "api_call_count": 34
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-15T15:57:28.311271Z",
+    "agent_lines": 5,
+    "human_added": 368,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 374,
+    "agent_percentage": 1.3368983957219251
+  },
+  "transcript_path": ".claude/projects/-Users-daishokomiyama-Code-pdf-splitter/7d61cf2b-9a48-465c-b358-115109ffb442.jsonl"
+}

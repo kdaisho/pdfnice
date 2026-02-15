@@ -1,0 +1,77 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+search brush-up, here's a minor issue:
+when search terms includes whitespace, e.g., 'Home manager', the highlighting area won't appear for the whitespace so, the highlighing covers only 'Home manage' while search term is 'Home manager'
+
+### Prompt 2
+
+umm, i don't see improvement... maybe it's not a whitespace, as i can see now 'Home' (search term) and 'Hom' (highlight area).
+
+### Prompt 3
+
+now, it's worse. search term 'H' covers 'Home Mana'
+
+### Prompt 4
+
+no, it's a lot worse than the original behavior
+
+### Prompt 5
+
+search 'Home', highlight 'Hom'
+{
+  "str": "Home Manager Configuration",
+  "itemWidth": 125.93436915273449,
+  "strLength": 26,
+  "charWidth": 4.8436295827974805,
+  "highlightStartChar": 0,
+  "highlightEndChar": 4,
+  "highlightX": 440.86873163046874,
+  "highlightWidth": 19.374518331189922,
+  "transform": [
+    9.5999996,
+    0,
+    0,
+    9.5999996,
+    440.86873163046874,
+    737.8500022562439
+  ],
+  "scale": 1.5
+}
+
+### Prompt 6
+
+ok, i see a slight improvements but for larger fonts (e.g., title) 'Home' covers only 'H' and a half 'o' (of Home). Still, the original behaviour is much better
+
+### Prompt 7
+
+now it's better but still need adjustments:
+'Home Mnager Man' covers 'Home Manager Manual', but a good thing is the cover areas seems consistent between small fonts and large fonts
+
+### Prompt 8
+
+good. i see improvments: 'Home Man' covers 'Home Manag' consistently both large and small fonts
+
+### Prompt 9
+
+no, you're doing opposite. now 'Home Man' covers 'Home Manage'. When i say A covers B, A is the search term (user input), and B is the characters that the highlighting area covers.
+
+### Prompt 10
+
+getting better. 'Home Man' covers 'Home Mana', slightly highlighiting a bit wider than necessary
+
+### Prompt 11
+
+i found the best at 12%. (1.12). Now I find interesting thing:
+When the match words is at the begining of line, the highlighing area has highest accuracy, but when the words are in the middle of line, or end of it, the highlighting appears right than it needs to be:
+e.g., search term: 'Home Man'
+'Home Man'ager Manual (single quoted are the highlighted, and this is good)
+Introduction to Ho'me Mana'ger (highlighted starts at 'm' of 'Home Manager', due to words before it)
+
+### Prompt 12
+
+better now. the line: term 'Home Man' covers Installing H'ome Mana'ger
+
