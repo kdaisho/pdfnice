@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "df2cace67122",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "packages/web/src/routes/+page.svelte"
+  ],
+  "sessions": [
+    {
+      "metadata": "/df/2cace67122/0/metadata.json",
+      "transcript": "/df/2cace67122/0/full.jsonl",
+      "context": "/df/2cace67122/0/context.md",
+      "content_hash": "/df/2cace67122/0/content_hash.txt",
+      "prompt": "/df/2cace67122/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 100,
+    "cache_creation_tokens": 35163,
+    "cache_read_tokens": 477569,
+    "output_tokens": 25,
+    "api_call_count": 12
+  }
+}

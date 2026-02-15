@@ -1,0 +1,12 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+can you make the search bar looks like a browser's search popup? it can be a bit larger than the standard search popup as we support casing/whole_word buttons.
+
+### Prompt 2
+
+make sure to capture standard Ctrl + F key event, we don't want to see two search popups.
+
