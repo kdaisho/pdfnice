@@ -191,6 +191,10 @@ export const actions: Actions = {
 
 			redirect(303, '/dashboard');
 		} catch (error) {
+			// Re-throw redirects (SvelteKit throws redirects as errors)
+			if (error && typeof error === 'object' && 'status' in error && 'location' in error) {
+				throw error;
+			}
 			console.error('Registration verification error:', error);
 			return fail(500, {
 				error: 'Registration failed. Please try again.',
@@ -336,6 +340,10 @@ export const actions: Actions = {
 
 			redirect(303, '/dashboard');
 		} catch (error) {
+			// Re-throw redirects (SvelteKit throws redirects as errors)
+			if (error && typeof error === 'object' && 'status' in error && 'location' in error) {
+				throw error;
+			}
 			console.error('Login verification error:', error);
 			return fail(500, { error: 'Login failed. Please try again.', mode: 'login' as const });
 		}
