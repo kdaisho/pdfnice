@@ -1,0 +1,193 @@
+Implement the following plan:
+
+# Plan: Test Phase 2 Auth System
+
+## Overview
+Set up PostgreSQL locally, run database migrations, and verify the full passkey authentication flow works.
+
+## Prerequisites
+- PostgreSQL installed locally (via Homebrew or Docker)
+- pnpm installed
+
+## Steps
+
+### 1. Start PostgreSQL
+If using Homebrew:
+```bash
+brew services start postgresql@14
+```
+
+Or with Docker:
+```bash
+docker run --name pdf-splitter-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
+```
+
+### 2. Create Database
+```bash
+createdb pdf_splitter
+```
+
+Or via psql:
+```bash
+psql -U postgres -c "CREATE DATABASE pdf_splitter;"
+```
+
+### 3. Run Migrations
+```bash
+pnpm db:migrate:latest
+```
+
+This runs the Kysely migration at `packages/database/src/migrations/2025-02-01-001-initial-schema.ts` which creates:
+- `users` table
+- `sessions` table
+- `passkeys` table
+- `current_challenge` table
+
+### 4. Start Dev Server
+```bash
+pnpm dev
+```
+
+Open http://localhost:5173
+
+### 5. Test Registration Flow
+1. Click "Login / Sign Up" in the nav
+2. Enter an email address
+3. Click "Register Passkey"
+4. Complete Touch ID / Face ID prompt
+5. Verify redirect to `/dashboard`
+6. Verify user info displays correctly
+
+### 6. Test Login Flow
+1. Click "Logout" on dashboard
+2. Go back to `/setup`
+3. Toggle to "Login" mode
+4. Enter same email
+5. Click "Login with Passkey"
+6. Complete Touch ID / Face ID prompt
+7. Verify redirect to `/dashboard`
+
+### 7. Test Protected Routes
+1. While logged out, navigate to `/dashboard`
+2. Verify redirect to `/setup`
+3. After login, verify `/dashboard` is accessible
+
+## Environment Configuration
+Already configured in `.env`:
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pdf_splitter
+PUBLIC_RP_ID=localhost
+PUBLIC_RP_NAME="PDF Splitter"
+PUBLIC_ORIGIN=http://localhost:5173
+NODE_ENV=development
+```
+
+## Verification Checklist
+- [ ] Database created and migrations run
+- [ ] Registration creates new user in DB
+- [ ] Passkey saved with correct counter/device info
+- [ ] Session cookie set after registration
+- [ ] Login verifies passkey and updates counter
+- [ ] Session cookie set after login
+- [ ] Logout deletes session and clears cookie
+- [ ] Protected routes redirect when not authenticated
+
+## Troubleshooting
+
+### Database connection issues
+- Verify PostgreSQL is running: `pg_isready`
+- Check connection: `psql -U postgres -d pdf_splitter`
+
+### WebAuthn issues
+- Must use `localhost` (not IP address)
+- Check browser supports WebAuthn (Chrome, Safari, Firefox)
+- Verify device has Touch ID / Face ID or security key
+
+### Migration issues
+- Check `DATABASE_URL` in `.env`
+- Run `pnpm db:migrate:down` to rollback, then retry
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/daishokomiyama/.REDACTED.jsonl
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+aren't we using Docker for DB?
+
+---
+
+check the Reference Implementation (frontend-community-simple). it utilizes Docker and for me the result is satisfactory
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+it's a private repo. what do you need to access to it?
+
+---
+
+it's at ~/Code/frontend-community-simple
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+try to use the latest version for anything. we don't need to be exactly the same as the reference app.
+
+---
+
+2
+
+---
+
+<task-notification>
+<task-id>b37c55a</task-id>
+<output-file>/private/tmp/claude/-Users-daishokomiyama-Code-pdf-splitter/tasks/b37c55a.output</output-file>
+<status>failed</status>
+<summary>Background command "Start dev server" failed with exit code 137</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude/-Users-daishokomiyama-Code-pdf-splitter/tasks/b37c55a.output
+
+---
+
+i got Registration failed. Please try again.
+
+---
+
+i'm trying to see tables using dbGate. i need to create a new connection, where can i see username and password?
+
+---
+
+i now realize that i'm at one commit before than the latest, but i'd prefer the code in this commint than the latest. what can i do?
+
+---
+
+1
+
+---
+
+ok now i think we should use env variable for db credentials. what do you think?
+
+---
+
+go ahead
+
+---
+
+git stash show -p 0
+
+---
+
+[Request interrupted by user]
+
+---
+
+good. can you check if any other files which are not in gitignored that accidentaly contain credentials

@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "3cc209b99797",
+  "session_id": "e4c546e4-cc16-41f8-b1a0-4ee15af7f521",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-16T01:02:32.787019Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    ".env",
+    "docker-compose.yml",
+    "packages/web/src/routes/setup/+page.server.ts"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "55baba70-65af-4416-82c7-4244742b7f53",
+  "token_usage": {
+    "input_tokens": 631,
+    "cache_creation_tokens": 41255,
+    "cache_read_tokens": 3310300,
+    "output_tokens": 187,
+    "api_call_count": 71
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-16T01:02:32.599793Z",
+    "agent_lines": 6,
+    "human_added": 158,
+    "human_modified": 13,
+    "human_removed": 0,
+    "total_committed": 177,
+    "agent_percentage": 3.389830508474576
+  },
+  "transcript_path": ".claude/projects/-Users-daishokomiyama-Code-pdf-splitter/e4c546e4-cc16-41f8-b1a0-4ee15af7f521.jsonl"
+}
