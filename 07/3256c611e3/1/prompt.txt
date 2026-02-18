@@ -1,0 +1,97 @@
+We have a problem with text search functionality. The highlight won't accurately appear on searched words especially when the font size is large (e.g. titles). I got a suggested solution. It's worth reading for you to find a solution for us:
+
+Based on the technical analysis of PDF.js rendering behavior, the issue you are experiencing—where highlights fail to cover large text (like titles) or drift out of alignment—is likely caused by **cumulative alignment drift** and **incorrect CSS transformations** in your text layer.
+
+Since I cannot see your specific Svelte code, I have provided the specific code patterns and CSS rules you need to implement to fix this.
+
+### 1. Fix the CSS for the Text Layer
+The most common cause of highlight misalignment is the browser's layout engine clashing with the PDF's absolute positioning. You must force the browser to ignore its standard line-height and spacing rules.
+
+Add or update these specific styles in your Svelte component's `<style>` block:
+
+```css
+/* Container for the text layer */
+.textLayer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    opacity: 1; /* Keep visible for debugging, set to 0.2 or 0.5 to see alignment */
+    line-height: 1.0; /* Critical: prevents browser from adding extra height to large fonts */
+}
+
+/* Individual text spans */
+.textLayer > span {
+    color: transparent;
+    position: absolute;
+    white-space: pre; /* Critical: preserves PDF spacing */
+    cursor: text;
+    transform-origin: 0% 0%; /* Critical: pins scaling to top-left */
+}
+
+/* The highlight class you toggle */
+.textLayer .highlight {
+    background-color: rgba(255, 255, 0, 0.4); /* Semi-transparent yellow */
+    border-radius: 4px;
+    box-shadow: 0 0 2px rgba(255, 255, 0, 0.4); /* Helps cover small gaps */
+}
+```
+
+### 2. Correct the `transform` Logic in JavaScript
+In your Svelte script where you process `page.getTextContent()`, you are likely mapping `items`. You must apply the **transform matrix** correctly to handle different font sizes.
+
+PDF.js returns a `transform` array for every text item: `[scaleX, skewY, skewX, scaleY, x, y]`.
+*   **ScaleY (transform)** typically represents the font size in PDF units.
+*   **ScaleX (transform)** represents the horizontal scaling.
+
+Update your HTML generation logic to apply these styles dynamically:
+
+```svelte
+<!-- In your loop over textItems -->
+{#each textItems as item}
+  <span
+    class:highlight={isHighlighted(item.str)}
+    style="
+      left: {item.transform}px;
+      top: {item.transform - item.transform}px; /* Offset Y by font size */
+      font-size: {item.transform}px;
+      font-family: {item.fontName}, sans-serif;
+      transform: scaleX({item.width / item.transform * scaleCorrection}); 
+    "
+  >
+    {item.str}
+  </span>
+{/each}
+```
+
+**Why this fixes the "Large Title" issue:**
+In PDF coordinates, the `y` position is often at the *baseline* of the text. HTML positioning places the element at the top-left.
+*   **Fix:** You must subtract the font size (`item.transform`) from the `top` position (`item.transform`) so the span shifts "up" to cover the large characters. Without this, the highlight starts at the bottom of the letters, leaving the top unhighlighted.
+
+### 3. Implement Word-Breaking (To Fix Drift)
+If you highlight a long sentence and the highlight drifts off by the end, it is because the browser's font rendering differs slightly from the PDF's.
+
+**Solution:** Don't render full sentences. Break strings into individual words or characters if possible.
+*   **Logic:** When you iterate through `textItems`, if an item contains a long string, split it by spaces.
+*   **Why:** This resets the absolute coordinate for every word, preventing the "drift" error from accumulating across the line.
+
+### 4. Ensure Fonts are Loaded
+If the highlight size is wrong immediately upon loading but fixes itself later, your text layer is rendering before the PDF fonts are ready.
+*   **Fix:** Wrap your render function in `document.fonts.ready`:
+
+```javascript
+document.fonts.ready.then(() => {
+  // Trigger your renderTextLayer function here
+});
+```
+
+### Summary of Changes for `svelte-file.md`
+1.  **CSS:** Set `.textLayer { line-height: 1; }` and `span { transform-origin: 0 0; }`.
+2.  **HTML/JS:** Calculate `top` as `y - fontSize`.
+3.  **HTML/JS:** Ensure `font-size` is mapped directly from `transform`.
+
+---
+
+nothing has been fixed. Search word 'Home Manager' highlights 'Home' only for the title.
