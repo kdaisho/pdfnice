@@ -3,7 +3,7 @@
   "checkpoint_id": "073256c611e3",
   "strategy": "manual-commit",
   "branch": "improve-text-search",
-  "checkpoints_count": 3,
+  "checkpoints_count": 6,
   "files_touched": [
     "packages/web/src/routes/+page.svelte"
   ],
@@ -21,13 +21,20 @@
       "context": "/07/3256c611e3/1/context.md",
       "content_hash": "/07/3256c611e3/1/content_hash.txt",
       "prompt": "/07/3256c611e3/1/prompt.txt"
+    },
+    {
+      "metadata": "/07/3256c611e3/2/metadata.json",
+      "transcript": "/07/3256c611e3/2/full.jsonl",
+      "context": "/07/3256c611e3/2/context.md",
+      "content_hash": "/07/3256c611e3/2/content_hash.txt",
+      "prompt": "/07/3256c611e3/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 304,
-    "cache_creation_tokens": 146991,
-    "cache_read_tokens": 1628966,
-    "output_tokens": 99,
-    "api_call_count": 38
+    "input_tokens": 360,
+    "cache_creation_tokens": 386092,
+    "cache_read_tokens": 4768241,
+    "output_tokens": 604,
+    "api_call_count": 86
   }
 }
