@@ -1,0 +1,106 @@
+Implement the following plan:
+
+# Plan: Fix Search Highlight Sizing Using transform[3] (Font Size)
+
+## Problem
+
+Current highlight height uses `divRect.height` from `getBoundingClientRect()`, which gives the rendered box height. This may not match the actual text height for different font sizes.
+
+The original `textContent.items[i].transform[3]` (scaleY = font size in PDF points) is **discarded** after TextLayer renders - only HTML spans are stored.
+
+## Solution
+
+Store font size from `transform[3]` before TextLayer renders, then use it to properly size highlights.
+
+## Key Formula
+
+```
+highlightHeight = Math.abs(transform[3]) * viewport.scale * (96/72)
+```
+
+Where:
+- `transform[3]` = font size in PDF points (72 DPI)
+- `viewport.scale` = 1.5 (rendering scale)
+- `96/72` = DPI conversion (PDF to CSS units)
+
+## Implementation
+
+### File to modify
+`packages/web/src/routes/+page.svelte`
+
+### Step 1: Update PageTextData interface (lines 29-34)
+
+Add `fontSizes` array to store font heights per text item:
+
+```typescript
+interface PageTextData {
+  pageWrapper: HTMLElement;
+  viewport: { width: number; height: number; scale: number };
+  textDivs: HTMLElement[];
+  textContentItemsStr: string[];
+  fontSizes: number[];  // NEW: font height in rendered pixels per text item
+}
+```
+
+### Step 2: Store font sizes when building pagesData (lines 308-328)
+
+After `getTextContent()`, extract and convert font sizes before passing to TextLayer:
+
+```typescript
+const textContent = await page.getTextContent();
+
+// Extract font sizes from transform[3], convert to rendered pixels
+const PDF_TO_CSS_UNITS = 96 / 72;
+const fontSizes = textContent.items.map((item) => {
+  if ('transform' in item) {
+    return Math.abs(item.transform[3]) * viewport.scale * PDF_TO_CSS_UNITS;
+  }
+  return 12 * viewport.scale * PDF_TO_CSS_UNITS; // fallback
+});
+
+// After TextLayer.render(), store alongside other data:
+pagesData.push({
+  pageWrapper,
+  viewport: { width: viewport.width, height: viewport.height, scale: viewport.scale },
+  textDivs: textSpans,
+  textContentItemsStr: textSpans.map((s) => s.textContent ?? ''),
+  fontSizes  // NEW
+});
+```
+
+### Step 3: Use stored font size for highlight height (line 142)
+
+Replace `divRect.height` with the pre-calculated font size:
+
+```typescript
+// Current:
+highlight.style.height = `${divRect.height}px`;
+
+// New:
+const fontSize = pageData.fontSizes[divIdx] || divRect.height;
+highlight.style.height = `${fontSize}px`;
+```
+
+### Step 4: Adjust vertical positioning (line 140)
+
+The highlight top position may need adjustment since font metrics use baseline positioning:
+
+```typescript
+// May need to offset based on descent if text appears shifted
+highlight.style.top = `${divRect.top - wrapperRect.top}px`;
+```
+
+## Verification
+
+1. Load a PDF with multiple font sizes (headings vs body text)
+2. Search for words in different sections
+3. Verify highlight height matches actual text height in each case
+4. Check that highlights for small text don't overflow
+5. Check that highlights for large text fully cover the word
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/daishokomiyama/.REDACTED.jsonl
+
+---
+
+OK. I see improvments on height of highlight, but the width remain the same (too small for large fonts)
