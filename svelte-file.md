@@ -1,3 +1,12 @@
+# PDF Splitter
+
+## Text Search Functionality
+
+Please suggest changes to the svelte file (svelte-file.md). The text search functionality has issue that it can't highlight the words accurately especially when the font size are different. Highlight won't cover fully when the font is large (e.g. titles)
+
+## Current Code
+
+```svelte
 <script lang="ts">
 	import 'pdfjs-dist/web/pdf_viewer.css';
 	import type { getDocument } from 'pdfjs-dist/types/src/display/api';
@@ -31,8 +40,6 @@
 		viewport: { width: number; height: number; scale: number };
 		textDivs: HTMLElement[];
 		textContentItemsStr: string[];
-		fontSizes: number[]; // Font height in rendered pixels per text item
-		itemWidths: number[]; // Total width of each text item in rendered pixels
 	}
 	let pagesData: PageTextData[] = [];
 
@@ -55,21 +62,9 @@
 
 		if (!searchQuery.trim() || pagesData.length === 0) return;
 
-		// Wait for fonts to be ready and use requestAnimationFrame to ensure
-		// layout is complete before measuring element positions
-		document.fonts.ready.then(() => {
-			requestAnimationFrame(() => {
-				performSearchInternal();
-			});
-		});
-	}
-
-	function performSearchInternal() {
-		console.log('==>', 100);
 		const query = matchCase ? searchQuery : searchQuery.toLowerCase();
 
 		pagesData.forEach((pageData) => {
-			console.log('==> PAGE_DATA', pageData);
 			const { textDivs, textContentItemsStr, pageWrapper } = pageData;
 
 			// Build charMap: charMap[absoluteIdx] = {divIdx, offset}
@@ -135,17 +130,13 @@
 					const startFrac = segStart / divText.length;
 					const endFrac = segEnd / divText.length;
 
-					// Use stored font size and item width for accurate highlight dimensions
-					const fontSize = pageData.fontSizes[divIdx] || divRect.height;
-					const itemWidth = pageData.itemWidths[divIdx] || divRect.width;
-
 					const highlight = document.createElement('div');
 					highlight.className = 'search-highlight-overlay';
 					highlight.dataset.matchIndex = String(currentMatchIdx);
-					highlight.style.left = `${divRect.left - wrapperRect.left + startFrac * itemWidth}px`;
+					highlight.style.left = `${divRect.left - wrapperRect.left + startFrac * divRect.width}px`;
 					highlight.style.top = `${divRect.top - wrapperRect.top}px`;
-					highlight.style.width = `${(endFrac - startFrac) * itemWidth}px`;
-					highlight.style.height = `${fontSize}px`;
+					highlight.style.width = `${(endFrac - startFrac) * divRect.width}px`;
+					highlight.style.height = `${divRect.height}px`;
 					pageWrapper.appendChild(highlight);
 					highlightElements.push(highlight);
 				}
@@ -158,7 +149,6 @@
 	}
 
 	function scrollToMatch(index: number) {
-		console.log('==>', 200, highlightElements);
 		highlightElements.forEach((el) => el.classList.remove('current-match'));
 
 		if (matchCount === 0) return;
@@ -313,19 +303,6 @@
 
 					const textContent = await page.getTextContent();
 
-					// Extract font sizes and widths from PDF data before TextLayer renders
-					// transform[3] = scaleY = font size in PDF points at 72 DPI
-					// item.width = text width in PDF units
-					const extractedData = textContent.items.map((item) => {
-						const fontSize =
-							'transform' in item && Array.isArray(item.transform)
-								? Math.abs(item.transform[3]) * viewport.scale * PDF_TO_CSS_UNITS
-								: 12 * viewport.scale * PDF_TO_CSS_UNITS;
-						const itemWidth =
-							'width' in item && typeof item.width === 'number' ? item.width * viewport.scale : 0;
-						return { fontSize, itemWidth };
-					});
-
 					const textLayer = new pdfjs.TextLayer({
 						textContentSource: textContent,
 						container: textLayerDiv,
@@ -339,33 +316,11 @@
 					const textSpans = Array.from(
 						textLayerDiv.querySelectorAll<HTMLElement>('span:not(.markedContent)')
 					);
-
-					// Filter extracted data to match textSpans (excluding empty/whitespace-only items)
-					// textContent.items may include items that don't render as spans
-					const fontSizes: number[] = [];
-					const itemWidths: number[] = [];
-					let spanIdx = 0;
-					for (let i = 0; i < textContent.items.length && spanIdx < textSpans.length; i++) {
-						const item = textContent.items[i];
-						if ('str' in item && item.str.trim()) {
-							fontSizes.push(extractedData[i].fontSize);
-							itemWidths.push(extractedData[i].itemWidth);
-							spanIdx++;
-						}
-					}
-					// Fill remaining if there's a mismatch (fallback)
-					while (fontSizes.length < textSpans.length) {
-						fontSizes.push(12 * viewport.scale * PDF_TO_CSS_UNITS);
-						itemWidths.push(0); // 0 means fallback to divRect.width
-					}
-
 					pagesData.push({
 						pageWrapper,
 						viewport: { width: viewport.width, height: viewport.height, scale: viewport.scale },
 						textDivs: textSpans,
-						textContentItemsStr: textSpans.map((s) => s.textContent ?? ''),
-						fontSizes,
-						itemWidths
+						textContentItemsStr: textSpans.map((s) => s.textContent ?? '')
 					});
 
 					container.appendChild(pageWrapper);
@@ -597,15 +552,6 @@
 		box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
 	}
 
-	/* Text layer overrides for accurate highlight positioning */
-	:global(.textLayer) {
-		line-height: 1 !important; /* Critical: prevents browser from adding extra height to large fonts */
-	}
-
-	:global(.textLayer > span) {
-		transform-origin: 0% 0% !important; /* Critical: pins scaling to top-left corner */
-	}
-
 	/* Search popup styles (browser-like) */
 	.search-popup {
 		position: fixed;
@@ -767,13 +713,10 @@
 		background-color: rgba(255, 255, 0, 0.4);
 		pointer-events: none;
 		z-index: 2;
-		border-radius: 2px;
-		/* Box-shadow helps cover small gaps from font rendering differences */
-		box-shadow: 0 0 2px rgba(255, 255, 0, 0.4);
 	}
 
 	:global(.search-highlight-overlay.current-match) {
 		background-color: rgba(255, 150, 0, 0.6);
-		box-shadow: 0 0 3px rgba(255, 150, 0, 0.6);
 	}
 </style>
+```
